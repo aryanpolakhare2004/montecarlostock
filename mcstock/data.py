@@ -22,6 +22,14 @@ def download_prices(ticker: str, period: str = "5y", interval: str = "1d") -> pd
     return download_close_prices([ticker], period=period, interval=interval)[ticker]
 
 
+def download_history(ticker: str, period: str = "5y", interval: str = "1d") -> pd.DataFrame:
+    """Download full OHLCV history for a single ticker (needed for volume features)."""
+    hist = yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
+    if hist.empty:
+        raise ValueError(f"No price data returned for ticker '{ticker}'")
+    return hist
+
+
 def log_returns(prices: pd.Series) -> pd.Series:
     return np.log(prices / prices.shift(1)).dropna()
 
