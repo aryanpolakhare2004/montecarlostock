@@ -1,6 +1,7 @@
 """Classical ML classifiers for binary up/down prediction."""
 from __future__ import annotations
 
+import joblib
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -13,6 +14,33 @@ MODEL_REGISTRY = {
     "random_forest": lambda: RandomForestClassifier(n_estimators=300, max_depth=5, random_state=0),
     "gradient_boosting": lambda: GradientBoostingClassifier(random_state=0),
 }
+
+# Single source of truth for the on-disk model bundle schema, so callers
+# can't silently drift by adding/reading ad hoc dict keys.
+BUNDLE_FIELDS = (
+    "model",
+    "model_type",
+    "feature_names",
+    "sentiment_sources",
+    "use_volume",
+    "horizon",
+    "train_accuracy",
+    "test_accuracy",
+    "test_returns",
+)
+
+
+def save_bundle(path: str, **fields) -> None:
+    """Persist a trained model plus everything needed to reuse it, as one joblib bundle."""
+    missing = set(BUNDLE_FIELDS) - set(fields)
+    if missing:
+        raise ValueError(f"model bundle missing required fields: {sorted(missing)}")
+    joblib.dump(fields, path)
+
+
+def load_bundle(path: str) -> dict:
+    """Load a model bundle saved by `save_bundle`."""
+    return joblib.load(path)
 
 
 def chronological_split(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2):

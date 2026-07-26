@@ -4,14 +4,13 @@ from __future__ import annotations
 import argparse
 import sys
 
-import joblib
 import numpy as np
 
 from . import data, gbm, plotting
 from .backtest import backtest_strategy
 from .historical_backtest import realized_daily_returns, resample_return_series, summarize_equity
 from .ml.dataset import build_dataset, build_latest_features
-from .ml.models import predict_proba_up, train_classifier
+from .ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
 from .portfolio import portfolio_gbm_paths, summarize_portfolio
 from .strategies.buy_and_hold import BuyAndHold
 from .strategies.ml_classifier import MLClassifierStrategy
@@ -29,13 +28,13 @@ SENTIMENT_SOURCE_GROUPS = {
 def _load_ml_technical_strategy(args: argparse.Namespace) -> MLClassifierStrategy:
     if not args.model_in:
         raise SystemExit("--model-in is required for --strategy ml-technical")
-    bundle = joblib.load(args.model_in)
-    if bundle.get("sentiment_sources"):
+    bundle = load_bundle(args.model_in)
+    try:
+        return MLClassifierStrategy(bundle["model"], bundle["feature_names"])
+    except ValueError as exc:
         raise SystemExit(
-            "ml-technical requires a model trained with --sentiment none --no-volume; "
-            "use 'mcstock backtest-ml' for models trained with sentiment/volume features"
-        )
-    return MLClassifierStrategy(bundle["model"], bundle["feature_names"])
+            f"{exc} (use 'mcstock backtest-ml' for models trained with sentiment/volume features)"
+        ) from exc
 
 
 STRATEGIES = {
@@ -107,22 +106,23 @@ def cmd_train(args: argparse.Namespace) -> None:
     print(f"  test_accuracy: {result['test_accuracy']:.4f}")
     print(result["test_report"])
 
-    joblib.dump({
-        "model": result["model"],
-        "model_type": args.model,
-        "feature_names": result["feature_names"],
-        "sentiment_sources": sentiment_sources,
-        "use_volume": args.use_volume,
-        "horizon": args.horizon,
-        "train_accuracy": result["train_accuracy"],
-        "test_accuracy": result["test_accuracy"],
-        "test_returns": test_returns.to_numpy(),
-    }, args.model_out)
+    save_bundle(
+        args.model_out,
+        model=result["model"],
+        model_type=args.model,
+        feature_names=result["feature_names"],
+        sentiment_sources=sentiment_sources,
+        use_volume=args.use_volume,
+        horizon=args.horizon,
+        train_accuracy=result["train_accuracy"],
+        test_accuracy=result["test_accuracy"],
+        test_returns=test_returns.to_numpy(),
+    )
     print(f"Saved model to {args.model_out}")
 
 
 def cmd_predict(args: argparse.Namespace) -> None:
-    bundle = joblib.load(args.model_in)
+    bundle = load_bundle(args.model_in)
     latest = build_latest_features(
         args.ticker, sentiment_sources=bundle["sentiment_sources"], use_volume=bundle["use_volume"]
     )
@@ -135,7 +135,7 @@ def cmd_predict(args: argparse.Namespace) -> None:
 
 
 def cmd_backtest_ml(args: argparse.Namespace) -> None:
-    bundle = joblib.load(args.model_in)
+    bundle = load_bundle(args.model_in)
     test_returns = bundle["test_returns"]
 
     equity = resample_return_series(
@@ -176,17 +176,25 @@ def cmd_portfolio(args: argparse.Namespace) -> None:
         print(f"Saved chart to {args.out}")
 
 
+def _add_period_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--period", default="5y", help="Historical lookback window for calibration")
+
+
+def _add_seed_out_args(parser: argparse.ArgumentParser, out_help: str | None = None) -> None:
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--out", default=None, help=out_help)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mcstock", description="Monte Carlo stock simulations")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_price = sub.add_parser("price", help="Simulate future price paths for a single ticker (GBM)")
     p_price.add_argument("ticker")
-    p_price.add_argument("--period", default="5y", help="Historical lookback window for calibration")
+    _add_period_arg(p_price)
     p_price.add_argument("--days", type=int, default=252, help="Number of trading days to simulate")
     p_price.add_argument("--sims", type=int, default=10000, help="Number of simulated paths")
-    p_price.add_argument("--seed", type=int, default=None)
-    p_price.add_argument("--out", default=None, help="Path to save a PNG chart of the simulated paths")
+    _add_seed_out_args(p_price, "Path to save a PNG chart of the simulated paths")
     p_price.set_defaults(func=cmd_price)
 
     p_strategy = sub.add_parser(
@@ -196,12 +204,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_strategy.add_argument("--strategy", choices=list(STRATEGIES), default="buy-and-hold")
     p_strategy.add_argument("--fast", type=int, default=20, help="Fast SMA window (sma-crossover only)")
     p_strategy.add_argument("--slow", type=int, default=50, help="Slow SMA window (sma-crossover only)")
-    p_strategy.add_argument("--period", default="5y")
+    _add_period_arg(p_strategy)
     p_strategy.add_argument("--days", type=int, default=252)
     p_strategy.add_argument("--sims", type=int, default=5000)
     p_strategy.add_argument("--block-size", type=int, default=5, help="Block bootstrap block length in days")
-    p_strategy.add_argument("--seed", type=int, default=None)
-    p_strategy.add_argument("--out", default=None, help="Path to save a PNG chart of the return distribution")
+    _add_seed_out_args(p_strategy, "Path to save a PNG chart of the return distribution")
     p_strategy.add_argument(
         "--model-in", default=None,
         help="Path to a joblib model saved by 'mcstock train' (required for --strategy ml-technical)"
@@ -218,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
                                "REDDIT_CLIENT_ID/REDDIT_CLIENT_SECRET env vars)")
     p_train.add_argument("--no-volume", dest="use_volume", action="store_false",
                           help="Exclude volume features (required to later use --strategy ml-technical)")
-    p_train.add_argument("--period", default="5y")
+    _add_period_arg(p_train)
     p_train.add_argument("--horizon", type=int, default=1, help="Predict direction over this many trading days ahead")
     p_train.add_argument("--test-size", type=float, default=0.2, help="Fraction of most-recent days held out for testing")
     p_train.add_argument("--model-out", default="mcstock_model.joblib")
@@ -236,8 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_backtest_ml.add_argument("--days", type=int, default=60)
     p_backtest_ml.add_argument("--sims", type=int, default=10000)
     p_backtest_ml.add_argument("--block-size", type=int, default=5)
-    p_backtest_ml.add_argument("--seed", type=int, default=None)
-    p_backtest_ml.add_argument("--out", default=None)
+    _add_seed_out_args(p_backtest_ml)
     p_backtest_ml.set_defaults(func=cmd_backtest_ml)
 
     p_portfolio = sub.add_parser(
@@ -249,11 +255,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Portfolio weights, one per ticker, must sum to 1 (default: equal-weighted)"
     )
     p_portfolio.add_argument("--value", type=float, default=10000.0, help="Starting portfolio value")
-    p_portfolio.add_argument("--period", default="5y")
+    _add_period_arg(p_portfolio)
     p_portfolio.add_argument("--days", type=int, default=252)
     p_portfolio.add_argument("--sims", type=int, default=5000)
-    p_portfolio.add_argument("--seed", type=int, default=None)
-    p_portfolio.add_argument("--out", default=None)
+    _add_seed_out_args(p_portfolio)
     p_portfolio.set_defaults(func=cmd_portfolio)
 
     return parser

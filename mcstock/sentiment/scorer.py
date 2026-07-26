@@ -4,6 +4,8 @@ from __future__ import annotations
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+from .._dates import to_naive_utc
+
 SENTIMENT_FEATURE_COLUMNS = [
     "sentiment_mean",
     "sentiment_std",
@@ -33,10 +35,8 @@ def daily_sentiment_features(items: list[dict]) -> pd.DataFrame:
 
     rows = []
     for item in items:
-        ts = pd.Timestamp(item["published"])
-        if ts.tzinfo is not None:
-            ts = ts.tz_convert("UTC").tz_localize(None)
-        rows.append({"date": ts.normalize(), "score": score_text(item["title"])})
+        ts = to_naive_utc(pd.Timestamp(item["published"]))
+        rows.append({"date": ts, "score": score_text(item["title"])})
 
     grouped = pd.DataFrame(rows).groupby("date")["score"]
     out = pd.DataFrame({

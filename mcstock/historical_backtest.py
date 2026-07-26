@@ -12,6 +12,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .bootstrap import block_bootstrap_samples
+from .stats import returns_and_drawdown_summary
+
 
 def realized_daily_returns(model, X_test: pd.DataFrame, forward_returns: pd.Series) -> pd.Series:
     """Daily strategy returns from a fitted model's predictions on held-out data.
@@ -35,20 +38,10 @@ def resample_return_series(
 
     Returns an array of shape (n_sims, days + 1) of cumulative equity, starting at 1.0.
     """
-    rng = np.random.default_rng(seed)
-    n_returns = len(daily_returns)
-    if n_returns < block_size:
-        raise ValueError("Not enough realized returns for the requested block size")
-
-    n_blocks = int(np.ceil(days / block_size))
+    sampled = block_bootstrap_samples(daily_returns, days, n_sims, block_size, seed)
     equity = np.empty((n_sims, days + 1))
     equity[:, 0] = 1.0
-
-    for sim in range(n_sims):
-        starts = rng.integers(0, n_returns - block_size + 1, size=n_blocks)
-        sampled = np.concatenate([daily_returns[s:s + block_size] for s in starts])[:days]
-        equity[sim, 1:] = np.cumprod(1.0 + sampled)
-
+    equity[:, 1:] = np.cumprod(1.0 + sampled, axis=1)
     return equity
 
 
@@ -56,12 +49,4 @@ def summarize_equity(equity: np.ndarray) -> dict:
     finals = equity[:, -1]
     running_max = np.maximum.accumulate(equity, axis=1)
     drawdowns = ((equity - running_max) / running_max).min(axis=1)
-    return {
-        "mean_return": float(np.mean(finals) - 1.0),
-        "median_return": float(np.median(finals) - 1.0),
-        "p05_return": float(np.percentile(finals, 5) - 1.0),
-        "p95_return": float(np.percentile(finals, 95) - 1.0),
-        "prob_profit": float(np.mean(finals > 1.0)),
-        "mean_max_drawdown": float(np.mean(drawdowns)),
-        "worst_max_drawdown": float(np.min(drawdowns)),
-    }
+    return returns_and_drawdown_summary(finals - 1.0, drawdowns)

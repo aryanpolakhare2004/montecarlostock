@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from .bootstrap import block_bootstrap_samples
+from .stats import returns_and_drawdown_summary
 from .strategies.base import Strategy
 
 
@@ -15,20 +17,10 @@ def resample_paths(
     seed: int | None = None,
 ) -> np.ndarray:
     """Build synthetic price paths by block-bootstrapping historical log returns."""
-    rng = np.random.default_rng(seed)
-    n_returns = len(log_returns)
-    if n_returns < block_size:
-        raise ValueError("Not enough historical returns for the requested block size")
-
-    n_blocks = int(np.ceil(days / block_size))
+    sampled = block_bootstrap_samples(log_returns, days, n_sims, block_size, seed)
     paths = np.empty((n_sims, days + 1))
     paths[:, 0] = s0
-
-    for sim in range(n_sims):
-        starts = rng.integers(0, n_returns - block_size + 1, size=n_blocks)
-        sampled = np.concatenate([log_returns[s:s + block_size] for s in starts])[:days]
-        paths[sim, 1:] = s0 * np.exp(np.cumsum(sampled))
-
+    paths[:, 1:] = s0 * np.exp(np.cumsum(sampled, axis=1))
     return paths
 
 
@@ -55,15 +47,7 @@ def backtest_strategy(
         running_max = np.maximum.accumulate(equity)
         max_drawdowns[sim] = np.min((equity - running_max) / running_max)
 
-    return {
-        "mean_return": float(np.mean(total_returns)),
-        "median_return": float(np.median(total_returns)),
-        "std_return": float(np.std(total_returns, ddof=1)),
-        "p05_return": float(np.percentile(total_returns, 5)),
-        "p95_return": float(np.percentile(total_returns, 95)),
-        "prob_profit": float(np.mean(total_returns > 0)),
-        "mean_max_drawdown": float(np.mean(max_drawdowns)),
-        "worst_max_drawdown": float(np.min(max_drawdowns)),
-        "total_returns": total_returns,
-        "paths": paths,
-    }
+    summary = returns_and_drawdown_summary(total_returns, max_drawdowns)
+    summary["total_returns"] = total_returns
+    summary["paths"] = paths
+    return summary

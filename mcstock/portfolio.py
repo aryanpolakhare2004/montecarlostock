@@ -4,6 +4,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .stats import percentile_summary
+
 
 def portfolio_gbm_paths(
     prices: pd.DataFrame,
@@ -40,28 +42,23 @@ def portfolio_gbm_paths(
     s0 = prices.iloc[-1].to_numpy()
     asset_shares = (weights * initial_value) / s0
 
+    # Fully vectorized across simulations: draw all shocks at once, correlate,
+    # cumulate, and combine assets into portfolio value with batched matmuls.
+    z = rng.standard_normal((n_sims, days, n_assets))
+    correlated_shocks = z @ chol.T
+    drift = (mu - 0.5 * sigma**2) * dt
+    log_increments = drift + correlated_shocks * np.sqrt(dt)
+    asset_paths = s0 * np.exp(np.cumsum(log_increments, axis=1))
+
     portfolio_values = np.empty((n_sims, days + 1))
     portfolio_values[:, 0] = initial_value
-
-    for sim in range(n_sims):
-        z = rng.standard_normal((days, n_assets))
-        correlated_shocks = z @ chol.T
-        drift = (mu - 0.5 * sigma**2) * dt
-        log_increments = drift + correlated_shocks * np.sqrt(dt)
-        asset_paths = s0 * np.exp(np.cumsum(log_increments, axis=0))
-        portfolio_values[sim, 1:] = asset_paths @ asset_shares
-
+    portfolio_values[:, 1:] = asset_paths @ asset_shares
     return portfolio_values
 
 
 def summarize_portfolio(paths: np.ndarray) -> dict:
     finals = paths[:, -1]
     start = paths[0, 0]
-    return {
-        "mean": float(np.mean(finals)),
-        "median": float(np.median(finals)),
-        "std": float(np.std(finals, ddof=1)),
-        "p05": float(np.percentile(finals, 5)),
-        "p95": float(np.percentile(finals, 95)),
-        "prob_loss": float(np.mean(finals < start)),
-    }
+    summary = percentile_summary(finals)
+    summary["prob_loss"] = float(np.mean(finals < start))
+    return summary

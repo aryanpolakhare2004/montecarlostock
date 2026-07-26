@@ -4,11 +4,14 @@ https://www.reddit.com/prefs/apps).
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 
 import feedparser
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 
 def fetch_yfinance_news(ticker: str) -> list[dict]:
@@ -82,26 +85,26 @@ def fetch_reddit_posts(
     return items
 
 
+_SOURCE_FETCHERS = {
+    "yfinance": fetch_yfinance_news,
+    "rss": fetch_rss_headlines,
+    "reddit": fetch_reddit_posts,
+}
+
+
 def fetch_all_news(ticker: str, sources: list[str] = ("yfinance", "rss", "reddit")) -> list[dict]:
     """Combine news items across sources, skipping any that fail (e.g. missing
-    Reddit credentials) with a warning rather than raising.
+    Reddit credentials) with a logged warning rather than raising.
     """
     items: list[dict] = []
-    if "yfinance" in sources:
+    for name in sources:
+        fetch_fn = _SOURCE_FETCHERS.get(name)
+        if fetch_fn is None:
+            continue
         try:
-            items.extend(fetch_yfinance_news(ticker))
+            items.extend(fetch_fn(ticker))
         except Exception as exc:
-            print(f"warning: skipping yfinance news source: {exc}")
-    if "rss" in sources:
-        try:
-            items.extend(fetch_rss_headlines(ticker))
-        except Exception as exc:
-            print(f"warning: skipping rss news source: {exc}")
-    if "reddit" in sources:
-        try:
-            items.extend(fetch_reddit_posts(ticker))
-        except Exception as exc:
-            print(f"warning: skipping reddit news source: {exc}")
+            logger.warning("skipping %s news source: %s", name, exc)
     return items
 
 

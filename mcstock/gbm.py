@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from .stats import percentile_summary
+
 
 def simulate_gbm_paths(
     s0: float,
@@ -30,13 +32,8 @@ def summarize_final_prices(paths: np.ndarray) -> dict:
     """Summary statistics for the terminal (final-day) price distribution."""
     finals = paths[:, -1]
     start = paths[0, 0]
-    return {
-        "mean": float(np.mean(finals)),
-        "median": float(np.median(finals)),
-        "std": float(np.std(finals, ddof=1)),
-        "p05": float(np.percentile(finals, 5)),
-        "p25": float(np.percentile(finals, 25)),
-        "p75": float(np.percentile(finals, 75)),
-        "p95": float(np.percentile(finals, 95)),
-        "prob_above_start": float(np.mean(finals > start)),
-    }
+    summary = percentile_summary(finals)
+    summary["p25"] = float(np.percentile(finals, 25))
+    summary["p75"] = float(np.percentile(finals, 75))
+    summary["prob_above_start"] = float(np.mean(finals > start))
+    return summary

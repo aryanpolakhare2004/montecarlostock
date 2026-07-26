@@ -6,28 +6,23 @@ import pandas as pd
 import yfinance as yf
 
 
-def download_close_prices(tickers: list[str], period: str = "5y", interval: str = "1d") -> pd.DataFrame:
-    """Download aligned historical close prices for one or more tickers."""
-    frames = {}
-    for ticker in tickers:
-        hist = yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
-        if hist.empty:
-            raise ValueError(f"No price data returned for ticker '{ticker}'")
-        frames[ticker] = hist["Close"]
-    return pd.DataFrame(frames).dropna()
-
-
-def download_prices(ticker: str, period: str = "5y", interval: str = "1d") -> pd.Series:
-    """Download historical close prices for a single ticker."""
-    return download_close_prices([ticker], period=period, interval=interval)[ticker]
-
-
 def download_history(ticker: str, period: str = "5y", interval: str = "1d") -> pd.DataFrame:
     """Download full OHLCV history for a single ticker (needed for volume features)."""
     hist = yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
     if hist.empty:
         raise ValueError(f"No price data returned for ticker '{ticker}'")
     return hist
+
+
+def download_close_prices(tickers: list[str], period: str = "5y", interval: str = "1d") -> pd.DataFrame:
+    """Download aligned historical close prices for one or more tickers."""
+    frames = {ticker: download_history(ticker, period, interval)["Close"] for ticker in tickers}
+    return pd.DataFrame(frames).dropna()
+
+
+def download_prices(ticker: str, period: str = "5y", interval: str = "1d") -> pd.Series:
+    """Download historical close prices for a single ticker."""
+    return download_close_prices([ticker], period=period, interval=interval)[ticker]
 
 
 def log_returns(prices: pd.Series) -> pd.Series:

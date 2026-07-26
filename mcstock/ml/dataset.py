@@ -4,15 +4,10 @@ from __future__ import annotations
 import pandas as pd
 
 from .. import data as data_module
+from .._dates import to_naive_utc
 from ..features import build_technical_features
 from ..sentiment.news_sources import fetch_all_news
 from ..sentiment.scorer import SENTIMENT_FEATURE_COLUMNS, daily_sentiment_features
-
-
-def _to_naive_dates(index: pd.DatetimeIndex) -> pd.DatetimeIndex:
-    if index.tz is not None:
-        index = index.tz_convert("UTC").tz_localize(None)
-    return index.normalize()
 
 
 def _sentiment_features(ticker: str, sentiment_sources: list[str] | None) -> pd.DataFrame | None:
@@ -28,7 +23,7 @@ def _build_features(ticker: str, period: str, sentiment_sources, use_volume: boo
     volume = history["Volume"] if use_volume else None
 
     features = build_technical_features(close, volume)
-    features.index = _to_naive_dates(features.index)
+    features.index = to_naive_utc(features.index)
 
     sentiment = _sentiment_features(ticker, sentiment_sources)
     if sentiment is not None:
@@ -36,7 +31,7 @@ def _build_features(ticker: str, period: str, sentiment_sources, use_volume: boo
         features[SENTIMENT_FEATURE_COLUMNS] = features[SENTIMENT_FEATURE_COLUMNS].fillna(0.0)
 
     close_naive = close.copy()
-    close_naive.index = _to_naive_dates(close_naive.index)
+    close_naive.index = to_naive_utc(close_naive.index)
     return features, close_naive
 
 
