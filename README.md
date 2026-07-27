@@ -101,6 +101,30 @@ from historical returns) and combines them into total portfolio value.
 mcstock portfolio AAPL MSFT GOOG --weights 0.5 0.3 0.2 --value 10000 --out portfolio.png
 ```
 
+## Web dashboard
+
+A FastAPI + vanilla HTML/JS dashboard gives browser access to everything the
+CLI does, backed by a local SQLite database (`mcstock_data/mcstock.db`) that
+logs every simulation run and every trained model:
+
+```
+mcstock serve
+```
+
+Then open http://127.0.0.1:8000. Sections: **Price**, **Strategy**,
+**Compare**, **Portfolio**, **Train**, **Predict**, **Backtest ML**, and
+**History** (browses past runs and trained models from SQLite; chart PNGs are
+stored as BLOBs and served from the DB, not the filesystem).
+
+**Compare** answers "which algorithm works best for this stock": it runs
+buy-and-hold, sma-crossover, and any technical-only trained models on the
+*same* Monte Carlo bootstrapped price paths (not independently reseeded
+scenarios), so the ranking reflects actual strategy skill rather than which
+strategy happened to get luckier synthetic paths.
+
+Trained models and the SQLite DB live under `mcstock_data/` (override with
+the `MCSTOCK_DATA_DIR` env var); this directory is gitignored.
+
 ## Tests
 
 ```

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mcstock</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <h1>mcstock</h1>
+  <p class="subtitle">Monte Carlo stock simulation, ML trading models, and sentiment &mdash; local dashboard</p>
+</header>
+
+<nav id="tabs">
+  <button class="tab-btn active" data-tab="price">Price</button>
+  <button class="tab-btn" data-tab="strategy">Strategy</button>
+  <button class="tab-btn" data-tab="compare">Compare</button>
+  <button class="tab-btn" data-tab="portfolio">Portfolio</button>
+  <button class="tab-btn" data-tab="train">Train</button>
+  <button class="tab-btn" data-tab="predict">Predict</button>
+  <button class="tab-btn" data-tab="backtest_ml">Backtest ML</button>
+  <button class="tab-btn" data-tab="history">History</button>
+</nav>
+
+<main>
+
+  <section id="tab-price" class="tab-panel active">
+    <h2>Simulate future price paths (GBM)</h2>
+    <form id="form-price" class="run-form">
+      <label>Ticker <input name="ticker" required placeholder="AAPL"></label>
+      <label>Period <input name="period" value="5y"></label>
+      <label>Days <input name="days" type="number" value="252"></label>
+      <label>Sims <input name="sims" type="number" value="10000"></label>
+      <label>Seed <input name="seed" type="number" placeholder="optional"></label>
+      <button type="submit">Run</button>
+    </form>
+    <div class="result" id="result-price"></div>
+  </section>
+
+  <section id="tab-strategy" class="tab-panel">
+    <h2>Monte Carlo backtest a trading strategy</h2>
+    <form id="form-strategy" class="run-form">
+      <label>Ticker <input name="ticker" required placeholder="AAPL"></label>
+      <label>Strategy
+        <select name="strategy" id="strategy-select">
+          <option value="buy-and-hold">buy-and-hold</option>
+          <option value="sma-crossover">sma-crossover</option>
+          <option value="ml-technical">ml-technical</option>
+        </select>
+      </label>
+      <label class="strategy-only sma">Fast SMA <input name="fast" type="number" value="20"></label>
+      <label class="strategy-only sma">Slow SMA <input name="slow" type="number" value="50"></label>
+      <label class="strategy-only ml-technical">Model
+        <select name="model_id" id="strategy-model-select"><option value="">(load models first)</option></select>
+      </label>
+      <label>Period <input name="period" value="5y"></label>
+      <label>Days <input name="days" type="number" value="252"></label>
+      <label>Sims <input name="sims" type="number" value="5000"></label>
+      <label>Block size <input name="block_size" type="number" value="5"></label>
+      <label>Seed <input name="seed" type="number" placeholder="optional"></label>
+      <button type="submit">Run</button>
+    </form>
+    <div class="result" id="result-strategy"></div>
+  </section>
+
+  <section id="tab-compare" class="tab-panel">
+    <h2>Compare algorithms on one stock</h2>
+    <p class="hint">Runs buy-and-hold, sma-crossover, and any trained
+      <code>ml-technical</code>-eligible models (technical-only: sentiment none, volume unchecked) on the
+      <em>same</em> resampled price paths, so the ranking reflects strategy skill, not lucky scenarios.</p>
+    <form id="form-compare" class="run-form">
+      <label>Ticker <input name="ticker" required placeholder="AAPL"></label>
+      <label>Period <input name="period" value="5y"></label>
+      <label>Days <input name="days" type="number" value="252"></label>
+      <label>Sims <input name="sims" type="number" value="5000"></label>
+      <label>Block size <input name="block_size" type="number" value="5"></label>
+      <label>Fast SMA <input name="fast" type="number" value="20"></label>
+      <label>Slow SMA <input name="slow" type="number" value="50"></label>
+      <label>Seed <input name="seed" type="number" placeholder="optional"></label>
+      <label>Include ML models
+        <select name="model_ids" id="compare-model-select" multiple size="4"></select>
+      </label>
+      <button type="submit">Compare</button>
+    </form>
+    <div class="result" id="result-compare"></div>
+  </section>
+
+  <section id="tab-portfolio" class="tab-panel">
+    <h2>Simulate a multi-asset portfolio</h2>
+    <form id="form-portfolio" class="run-form">
+      <label>Tickers (comma-separated) <input name="tickers" required placeholder="AAPL,MSFT,GOOG"></label>
+      <label>Weights (comma-separated, optional) <input name="weights" placeholder="0.5,0.3,0.2"></label>
+      <label>Starting value <input name="value" type="number" value="10000"></label>
+      <label>Period <input name="period" value="5y"></label>
+      <label>Days <input name="days" type="number" value="252"></label>
+      <label>Sims <input name="sims" type="number" value="5000"></label>
+      <label>Seed <input name="seed" type="number" placeholder="optional"></label>
+      <button type="submit">Run</button>
+    </form>
+    <div class="result" id="result-portfolio"></div>
+  </section>
+
+  <section id="tab-train" class="tab-panel">
+    <h2>Train an ML classifier (binary up/down)</h2>
+    <form id="form-train" class="run-form">
+      <label>Ticker <input name="ticker" required placeholder="AAPL"></label>
+      <label>Model
+        <select name="model">
+          <option value="logreg">logreg</option>
+          <option value="random_forest">random_forest</option>
+          <option value="gradient_boosting">gradient_boosting</option>
+        </select>
+      </label>
+      <label>Sentiment
+        <select name="sentiment">
+          <option value="none">none</option>
+          <option value="yfinance">yfinance</option>
+          <option value="rss">rss</option>
+          <option value="reddit">reddit</option>
+          <option value="all">all</option>
+        </select>
+      </label>
+      <label class="checkbox"><input name="use_volume" type="checkbox" checked> Use volume features</label>
+      <label>Period <input name="period" value="5y"></label>
+      <label>Horizon (days ahead) <input name="horizon" type="number" value="1"></label>
+      <label>Test size <input name="test_size" type="number" step="0.05" value="0.2"></label>
+      <button type="submit">Train</button>
+    </form>
+    <p class="hint">Tip: to later use a model with strategy <code>ml-technical</code>, train with sentiment
+      <code>none</code> and volume features unchecked.</p>
+    <div class="result" id="result-train"></div>
+  </section>
+
+  <section id="tab-predict" class="tab-panel">
+    <h2>Predict next-period direction</h2>
+    <form id="form-predict" class="run-form">
+      <label>Model
+        <select name="model_id" id="predict-model-select"><option value="">(load models first)</option></select>
+      </label>
+      <button type="submit">Predict</button>
+    </form>
+    <div class="result" id="result-predict"></div>
+  </section>
+
+  <section id="tab-backtest_ml" class="tab-panel">
+    <h2>Monte Carlo project a trained model's robustness</h2>
+    <form id="form-backtest_ml" class="run-form">
+      <label>Model
+        <select name="model_id" id="backtest-model-select"><option value="">(load models first)</option></select>
+      </label>
+      <label>Days <input name="days" type="number" value="60"></label>
+      <label>Sims <input name="sims" type="number" value="10000"></label>
+      <label>Block size <input name="block_size" type="number" value="5"></label>
+      <label>Seed <input name="seed" type="number" placeholder="optional"></label>
+      <button type="submit">Run</button>
+    </form>
+    <div class="result" id="result-backtest_ml"></div>
+  </section>
+
+  <section id="tab-history" class="tab-panel">
+    <h2>History</h2>
+    <button id="refresh-history">Refresh</button>
+
+    <h3>Simulation runs</h3>
+    <div id="runs-table"></div>
+
+    <h3>Trained models</h3>
+    <div id="models-table"></div>
+  </section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

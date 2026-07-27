@@ -24,17 +24,15 @@ def resample_paths(
     return paths
 
 
-def backtest_strategy(
-    strategy: Strategy,
-    log_returns: np.ndarray,
-    s0: float,
-    days: int,
-    n_sims: int,
-    block_size: int = 5,
-    seed: int | None = None,
-) -> dict:
-    """Run a Monte Carlo backtest of `strategy` over resampled price paths."""
-    paths = resample_paths(log_returns, s0, days, n_sims, block_size, seed)
+def evaluate_strategy_on_paths(strategy: Strategy, paths: np.ndarray) -> dict:
+    """Run `strategy` over already-resampled price paths.
+
+    Splitting this out from `backtest_strategy` lets multiple strategies be
+    compared fairly on the *same* set of synthetic paths (see
+    mcstock.web.app's /api/compare), rather than each getting its own
+    independently resampled scenarios.
+    """
+    n_sims = paths.shape[0]
     daily_returns = np.diff(paths, axis=1) / paths[:, :-1]
 
     total_returns = np.empty(n_sims)
@@ -49,5 +47,20 @@ def backtest_strategy(
 
     summary = returns_and_drawdown_summary(total_returns, max_drawdowns)
     summary["total_returns"] = total_returns
+    return summary
+
+
+def backtest_strategy(
+    strategy: Strategy,
+    log_returns: np.ndarray,
+    s0: float,
+    days: int,
+    n_sims: int,
+    block_size: int = 5,
+    seed: int | None = None,
+) -> dict:
+    """Run a Monte Carlo backtest of `strategy` over resampled price paths."""
+    paths = resample_paths(log_returns, s0, days, n_sims, block_size, seed)
+    summary = evaluate_strategy_on_paths(strategy, paths)
     summary["paths"] = paths
     return summary

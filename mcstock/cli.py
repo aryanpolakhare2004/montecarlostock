@@ -63,7 +63,7 @@ def cmd_price(args: argparse.Namespace) -> None:
     _print_summary(summary)
 
     if args.out:
-        plotting.plot_paths(paths, args.out, f"{args.ticker} GBM simulation")
+        plotting.save_png(plotting.plot_paths(paths, f"{args.ticker} GBM simulation"), args.out)
         print(f"Saved chart to {args.out}")
 
 
@@ -85,9 +85,10 @@ def cmd_strategy(args: argparse.Namespace) -> None:
     )})
 
     if args.out:
-        plotting.plot_final_distribution(
-            result["total_returns"], args.out, f"{args.ticker} {args.strategy} return distribution"
+        png = plotting.plot_final_distribution(
+            result["total_returns"], f"{args.ticker} {args.strategy} return distribution"
         )
+        plotting.save_png(png, args.out)
         print(f"Saved chart to {args.out}")
 
 
@@ -150,8 +151,14 @@ def cmd_backtest_ml(args: argparse.Namespace) -> None:
     _print_summary(summary)
 
     if args.out:
-        plotting.plot_paths(equity, args.out, "ML strategy Monte Carlo projection")
+        plotting.save_png(plotting.plot_paths(equity, "ML strategy Monte Carlo projection"), args.out)
         print(f"Saved chart to {args.out}")
+
+
+def cmd_serve(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    uvicorn.run("mcstock.web.app:app", host=args.host, port=args.port, reload=args.reload)
 
 
 def cmd_portfolio(args: argparse.Namespace) -> None:
@@ -172,7 +179,7 @@ def cmd_portfolio(args: argparse.Namespace) -> None:
     _print_summary(summary)
 
     if args.out:
-        plotting.plot_paths(paths, args.out, "Portfolio simulation")
+        plotting.save_png(plotting.plot_paths(paths, "Portfolio simulation"), args.out)
         print(f"Saved chart to {args.out}")
 
 
@@ -245,6 +252,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_backtest_ml.add_argument("--block-size", type=int, default=5)
     _add_seed_out_args(p_backtest_ml)
     p_backtest_ml.set_defaults(func=cmd_backtest_ml)
+
+    p_serve = sub.add_parser("serve", help="Launch the mcstock web dashboard (FastAPI + SQLite history)")
+    p_serve.add_argument("--host", default="127.0.0.1")
+    p_serve.add_argument("--port", type=int, default=8000)
+    p_serve.add_argument("--reload", action="store_true", help="Auto-reload on code changes (development only)")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_portfolio = sub.add_parser(
         "portfolio", help="Simulate a multi-asset portfolio's future value (correlated GBM)"
