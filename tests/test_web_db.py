@@ -67,3 +67,23 @@ def test_register_model_without_sentiment(temp_db):
 
 def test_get_model_missing_returns_none(temp_db):
     assert temp_db.get_model(999) is None
+
+
+def test_watchlist_add_list_remove(temp_db):
+    temp_db.add_watchlist_ticker("msft")
+    temp_db.add_watchlist_ticker("aapl")
+    assert temp_db.list_watchlist_tickers() == ["MSFT", "AAPL"]
+
+    temp_db.remove_watchlist_ticker("msft")
+    assert temp_db.list_watchlist_tickers() == ["AAPL"]
+
+
+def test_watchlist_add_is_idempotent(temp_db):
+    temp_db.add_watchlist_ticker("AAPL")
+    temp_db.add_watchlist_ticker("AAPL")
+    assert temp_db.list_watchlist_tickers() == ["AAPL"]
+
+
+def test_watchlist_remove_missing_is_noop(temp_db):
+    temp_db.remove_watchlist_ticker("NOPE")
+    assert temp_db.list_watchlist_tickers() == []

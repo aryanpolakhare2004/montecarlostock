@@ -237,6 +237,42 @@ export interface FundamentalsCompareResponse {
   errors: Record<string, string>;
 }
 
+// ---- Watchlist ----
+
+export interface WatchlistScores {
+  business_quality: number | null;
+  growth: number | null;
+  financial_strength: number | null;
+  valuation: number | null;
+  risk_score: number | null;
+  risk_label: string;
+}
+
+export interface WatchlistEntry {
+  ticker: string;
+  company_name: string;
+  last_price: number;
+  day_change_pct: number | null;
+  sparkline: number[];
+  scores: WatchlistScores;
+  composite: number | null;
+}
+
+export interface WatchlistResponse {
+  tickers: WatchlistEntry[];
+  errors: Record<string, string>;
+}
+
+// ---- Terminal ----
+
+export interface TerminalRequest {
+  command: string;
+}
+
+export interface TerminalResponse {
+  output: string;
+}
+
 // ---- History ----
 
 export interface RunRecord {

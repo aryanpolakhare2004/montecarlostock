@@ -9,6 +9,8 @@ import { PredictPage } from './pages/PredictPage';
 import { BacktestMlPage } from './pages/BacktestMlPage';
 import { AnalystPage } from './pages/AnalystPage';
 import { AnalystComparePage } from './pages/AnalystComparePage';
+import { WatchlistPage } from './pages/WatchlistPage';
+import { TerminalPage } from './pages/TerminalPage';
 import { HistoryPage } from './pages/HistoryPage';
 
 const TABS = [
@@ -21,6 +23,8 @@ const TABS = [
   { id: 'backtest_ml', label: 'Backtest ML' },
   { id: 'analyst', label: 'Analyst' },
   { id: 'analyst_compare', label: 'Analyst compare' },
+  { id: 'watchlist', label: 'Watchlist' },
+  { id: 'terminal', label: 'Terminal' },
   { id: 'history', label: 'History' },
 ] as const;
 
@@ -62,6 +66,8 @@ export default function App() {
         {tab === 'backtest_ml' && <BacktestMlPage modelOptions={modelOptions} />}
         {tab === 'analyst' && <AnalystPage />}
         {tab === 'analyst_compare' && <AnalystComparePage />}
+        {tab === 'watchlist' && <WatchlistPage />}
+        {tab === 'terminal' && <TerminalPage />}
         {tab === 'history' && <HistoryPage />}
       </main>
     </>

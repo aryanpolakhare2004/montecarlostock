@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from mcstock.fundamentals import (
@@ -10,6 +11,7 @@ from mcstock.fundamentals import (
     scorecard,
     store,
     valuation,
+    watchlist as watchlist_mod,
 )
 
 YEARS = [2021, 2022, 2023, 2024]
@@ -472,3 +474,35 @@ def test_compare_ranks_and_collects_errors(monkeypatch):
     assert result["rows"][0]["ticker"] == "GOOD"
     assert "BAD" in result["errors"]
     assert len(result["rows"]) == 2
+
+
+# ---- watchlist quick_summary ----
+
+def _fake_price_series(n=40, start=100.0, step=1.0):
+    idx = pd.date_range("2024-01-01", periods=n, freq="D")
+    return pd.Series([start + step * i for i in range(n)], index=idx)
+
+
+def test_quick_summary_end_to_end(monkeypatch):
+    monkeypatch.setattr(watchlist_mod.store, "get_company_facts", lambda ticker: make_companyfacts("Test Corp"))
+    monkeypatch.setattr(watchlist_mod.price_data, "download_prices", lambda ticker, period="3mo": _fake_price_series())
+
+    summary = watchlist_mod.quick_summary("TEST")
+
+    assert summary["ticker"] == "TEST"
+    assert summary["company_name"] == "Test Corp"
+    assert summary["last_price"] == pytest.approx(139.0)
+    assert summary["day_change_pct"] == pytest.approx(1.0 / 138.0)
+    assert len(summary["sparkline"]) == 30
+    assert summary["scores"]["business_quality"] is not None
+    assert summary["composite"] is not None
+
+
+def test_quick_summary_single_price_point_has_no_day_change(monkeypatch):
+    monkeypatch.setattr(watchlist_mod.store, "get_company_facts", lambda ticker: make_companyfacts("Test Corp"))
+    monkeypatch.setattr(
+        watchlist_mod.price_data, "download_prices", lambda ticker, period="3mo": _fake_price_series(n=1)
+    )
+
+    summary = watchlist_mod.quick_summary("TEST")
+    assert summary["day_change_pct"] is None

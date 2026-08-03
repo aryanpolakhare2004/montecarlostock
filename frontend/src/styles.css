@@ -269,6 +269,68 @@ ul.evidence {
   overflow-x: auto;
 }
 
+.sparkline {
+  display: block;
+}
+
+.watchlist-table td {
+  vertical-align: middle;
+}
+
+.terminal {
+  background: #0b0c0e;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  color: #d7dee2;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.terminal-entry {
+  margin-bottom: 0.6rem;
+}
+
+.terminal-prompt-line {
+  color: #7fd88f;
+  margin-bottom: 0.15rem;
+}
+
+.terminal-output {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  color: inherit;
+}
+
+.terminal-busy {
+  color: #9aa1ac;
+  font-style: italic;
+}
+
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.terminal-prompt {
+  color: #7fd88f;
+}
+
+.terminal-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #eafff0;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
 .refresh-btn {
   background: var(--panel);
   border: 1px solid var(--border);

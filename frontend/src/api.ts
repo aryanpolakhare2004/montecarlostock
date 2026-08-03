@@ -9,7 +9,9 @@ import type {
   PriceRequest, PriceResponse,
   RunRecord,
   StrategyRequest, StrategyResponse,
+  TerminalRequest, TerminalResponse,
   TrainRequest, TrainResponse,
+  WatchlistEntry, WatchlistResponse,
 } from './types';
 
 export class ApiError extends Error {}
@@ -49,6 +51,11 @@ export const api = {
     postJSON<FundamentalsCompareResponse>('/api/fundamentals/compare', req),
   listRuns: (limit = 50) => getJSON<RunRecord[]>(`/api/runs?limit=${limit}`),
   listModels: () => getJSON<ModelRecord[]>('/api/models'),
+  listWatchlist: () => getJSON<WatchlistResponse>('/api/watchlist'),
+  addWatchlist: (ticker: string) => postJSON<WatchlistEntry>('/api/watchlist', { ticker }),
+  removeWatchlist: (ticker: string) =>
+    fetch(`/api/watchlist/${encodeURIComponent(ticker)}`, { method: 'DELETE' }).then((r) => handle<{ removed: string }>(r)),
+  terminal: (req: TerminalRequest) => postJSON<TerminalResponse>('/api/terminal', req),
 };
 
 export function runChartUrl(runId: number): string {

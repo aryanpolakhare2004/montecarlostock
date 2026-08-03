@@ -14,6 +14,7 @@ from .. import data, gbm, plotting
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
+from ..fundamentals import watchlist as fundamentals_watchlist
 from ..historical_backtest import realized_daily_returns, resample_return_series, summarize_equity
 from ..ml.dataset import build_dataset, build_latest_features
 from ..ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
@@ -21,7 +22,7 @@ from ..portfolio import portfolio_gbm_paths, summarize_portfolio
 from ..strategies.buy_and_hold import BuyAndHold
 from ..strategies.ml_classifier import MLClassifierStrategy
 from ..strategies.moving_average import MovingAverageCrossover
-from . import db
+from . import db, terminal
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -133,6 +134,14 @@ class FundamentalsRequest(BaseModel):
 class FundamentalsCompareRequest(BaseModel):
     tickers: list[str]
     llm_backend: Optional[str] = None
+
+
+class WatchlistAddRequest(BaseModel):
+    ticker: str
+
+
+class TerminalRequest(BaseModel):
+    command: str
 
 
 # ---- simulation endpoints ----
@@ -283,6 +292,41 @@ def api_fundamentals_compare(req: FundamentalsCompareRequest) -> dict:
         raise HTTPException(400, "at least one ticker is required")
     result = fundamentals_compare.compare(req.tickers, llm_backend_name=req.llm_backend)
     return {"rows": result["rows"], "reports": result["reports"], "errors": result["errors"]}
+
+
+# ---- watchlist endpoints ----
+
+@app.get("/api/watchlist")
+def api_watchlist_list() -> dict:
+    tickers = db.list_watchlist_tickers()
+    summaries = []
+    errors = {}
+    for ticker in tickers:
+        try:
+            summaries.append(fundamentals_watchlist.quick_summary(ticker))
+        except Exception as exc:
+            errors[ticker] = str(exc)
+    return {"tickers": summaries, "errors": errors}
+
+
+@app.post("/api/watchlist")
+def api_watchlist_add(req: WatchlistAddRequest) -> dict:
+    summary = fundamentals_watchlist.quick_summary(req.ticker)
+    db.add_watchlist_ticker(req.ticker)
+    return summary
+
+
+@app.delete("/api/watchlist/{ticker}")
+def api_watchlist_remove(ticker: str) -> dict:
+    db.remove_watchlist_ticker(ticker)
+    return {"removed": ticker.upper()}
+
+
+# ---- terminal endpoint ----
+
+@app.post("/api/terminal")
+def api_terminal(req: TerminalRequest) -> dict:
+    return {"output": terminal.execute(req.command)}
 
 
 # ---- ML endpoints ----

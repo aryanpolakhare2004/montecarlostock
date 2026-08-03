@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS models (
     model_path TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS watchlist (
+    ticker TEXT PRIMARY KEY,
+    added_at TEXT NOT NULL
+);
 """
 
 
@@ -137,6 +142,25 @@ def get_model(model_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute("SELECT * FROM models WHERE id = ?", (model_id,)).fetchone()
     return _model_row_to_dict(row) if row else None
+
+
+def add_watchlist_ticker(ticker: str) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO watchlist (ticker, added_at) VALUES (?, ?)",
+            (ticker.upper(), datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def remove_watchlist_ticker(ticker: str) -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM watchlist WHERE ticker = ?", (ticker.upper(),))
+
+
+def list_watchlist_tickers() -> list[str]:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT ticker FROM watchlist ORDER BY added_at").fetchall()
+    return [row["ticker"] for row in rows]
 
 
 def _model_row_to_dict(row: sqlite3.Row) -> dict:
