@@ -75,9 +75,6 @@ main {
   max-width: 900px;
 }
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
 .run-form {
   display: flex;
   flex-wrap: wrap;
@@ -125,8 +122,6 @@ main {
 }
 
 .run-form button:disabled { opacity: 0.6; cursor: default; }
-
-.strategy-only { display: none; }
 
 .hint {
   color: var(--muted);
@@ -274,7 +269,7 @@ ul.evidence {
   overflow-x: auto;
 }
 
-#refresh-history {
+.refresh-btn {
   background: var(--panel);
   border: 1px solid var(--border);
   color: var(--text);

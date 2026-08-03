@@ -103,18 +103,20 @@ mcstock portfolio AAPL MSFT GOOG --weights 0.5 0.3 0.2 --value 10000 --out portf
 
 ## Web dashboard
 
-A FastAPI + vanilla HTML/JS dashboard gives browser access to everything the
-CLI does, backed by a local SQLite database (`mcstock_data/mcstock.db`) that
-logs every simulation run and every trained model:
+A FastAPI backend with a React + TypeScript (Vite) frontend gives browser
+access to everything the CLI does, plus the fundamentals analyst, backed by a
+local SQLite database (`mcstock_data/mcstock.db`) that logs every simulation
+run and every trained model:
 
 ```
 mcstock serve
 ```
 
 Then open http://127.0.0.1:8000. Sections: **Price**, **Strategy**,
-**Compare**, **Portfolio**, **Train**, **Predict**, **Backtest ML**, and
-**History** (browses past runs and trained models from SQLite; chart PNGs are
-stored as BLOBs and served from the DB, not the filesystem).
+**Compare**, **Portfolio**, **Train**, **Predict**, **Backtest ML**,
+**Analyst**, **Analyst compare**, and **History** (browses past runs and
+trained models from SQLite; chart PNGs are stored as BLOBs and served from
+the DB, not the filesystem).
 
 **Compare** answers "which algorithm works best for this stock": it runs
 buy-and-hold, sma-crossover, and any technical-only trained models on the
@@ -122,8 +124,34 @@ buy-and-hold, sma-crossover, and any technical-only trained models on the
 scenarios), so the ranking reflects actual strategy skill rather than which
 strategy happened to get luckier synthetic paths.
 
+**Analyst** is an AI investment analyst built from SEC EDGAR filings (business
+quality/growth/financial strength/valuation/risk scorecard, evidence, fair
+value range, bull/bear case). See `mcstock/fundamentals/` for the pipeline.
+**Analyst compare** ranks multiple tickers side by side (e.g. `MU,WDC,STX`).
+
 Trained models and the SQLite DB live under `mcstock_data/` (override with
 the `MCSTOCK_DATA_DIR` env var); this directory is gitignored.
+
+### Frontend development
+
+The frontend source lives in `frontend/` (Vite + React + TypeScript) and
+builds into `mcstock/web/static/`, which FastAPI serves directly -- the built
+output is committed so `mcstock serve` works without a Node toolchain. After
+changing anything under `frontend/src`, rebuild it:
+
+```
+cd frontend
+npm install   # first time only
+npm run build
+```
+
+For iterating on the UI with hot reload, run the Vite dev server (proxies
+`/api/*` to FastAPI) alongside `mcstock serve`:
+
+```
+cd frontend
+npm run dev   # http://localhost:5173, expects the API on :8000
+```
 
 ## Tests
 
