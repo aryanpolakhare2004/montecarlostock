@@ -20,6 +20,8 @@
   <button class="tab-btn" data-tab="train">Train</button>
   <button class="tab-btn" data-tab="predict">Predict</button>
   <button class="tab-btn" data-tab="backtest_ml">Backtest ML</button>
+  <button class="tab-btn" data-tab="analyst">Analyst</button>
+  <button class="tab-btn" data-tab="analyst_compare">Analyst compare</button>
   <button class="tab-btn" data-tab="history">History</button>
 </nav>
 
@@ -156,6 +158,37 @@
       <button type="submit">Run</button>
     </form>
     <div class="result" id="result-backtest_ml"></div>
+  </section>
+
+  <section id="tab-analyst" class="tab-panel">
+    <h2>AI investment analyst</h2>
+    <p class="hint">Pulls structured financials straight from SEC EDGAR, engineers ratios, and scores the
+      business numerically. Bull/bear case and red flags are rendered from that same evidence &mdash;
+      by a local template unless a local LLM backend (e.g. Ollama) is configured.</p>
+    <form id="form-analyst" class="run-form">
+      <label>Ticker <input name="ticker" required placeholder="MSFT"></label>
+      <label>LLM backend
+        <select name="llm_backend">
+          <option value="">(server default)</option>
+          <option value="stub">stub (no LLM)</option>
+          <option value="ollama">ollama</option>
+        </select>
+      </label>
+      <label class="checkbox"><input name="force_refresh" type="checkbox"> Force refresh from SEC</label>
+      <button type="submit">Analyze</button>
+    </form>
+    <div class="result" id="result-analyst"></div>
+  </section>
+
+  <section id="tab-analyst_compare" class="tab-panel">
+    <h2>Compare companies</h2>
+    <p class="hint">e.g. Micron vs Western Digital vs Seagate &mdash; ranked by a simple composite of
+      quality, growth, financial strength, and valuation, minus a risk penalty.</p>
+    <form id="form-analyst-compare" class="run-form">
+      <label>Tickers (comma-separated) <input name="tickers" required placeholder="MU,WDC,STX"></label>
+      <button type="submit">Compare</button>
+    </form>
+    <div class="result" id="result-analyst-compare"></div>
   </section>
 
   <section id="tab-history" class="tab-panel">

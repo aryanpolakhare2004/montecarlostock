@@ -317,6 +317,140 @@ document.getElementById("form-compare").addEventListener("submit", async (evt) =
   }
 });
 
+// ---- Fundamentals analyst ----
+
+function fmtScore(x) {
+  return x === null || x === undefined ? "n/a" : Number(x).toFixed(1);
+}
+
+function fmtPct(x) {
+  return x === null || x === undefined ? "n/a" : `${(x * 100).toFixed(1)}%`;
+}
+
+function fmtMoney(x) {
+  return x === null || x === undefined
+    ? "n/a"
+    : `$${Number(x).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function renderEvidenceList(items) {
+  if (!items || !items.length) return "<p class=\"hint\">No evidence available.</p>";
+  return `<ul class="evidence">${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+}
+
+function renderScoreCard(report) {
+  const s = report.scores;
+  const t = report.trends;
+  const tile = (label, value) =>
+    `<div class="score-tile"><div class="score-label">${label}</div><div class="score-value">${fmtScore(value)}</div></div>`;
+
+  const grid =
+    tile("Business quality", s.business_quality) +
+    tile("Financial strength", s.financial_strength) +
+    tile("Growth", s.growth) +
+    tile("Valuation", s.valuation) +
+    `<div class="score-tile"><div class="score-label">Risk</div>` +
+    `<div class="score-value risk-${(s.risk_label || "unknown").toLowerCase()}">${s.risk_label || "n/a"}</div></div>`;
+
+  const trendsRow = `<div class="trend-row">
+      <span>Revenue trend: <strong>${t.revenue_trend}</strong></span>
+      <span>Free cash flow: <strong>${t.fcf_status}</strong></span>
+      <span>Debt position: <strong>${t.debt_position}</strong></span>
+      <span>Share dilution: <strong>${t.share_dilution}</strong></span>
+    </div>`;
+
+  const evidence = `
+    <details><summary>Business quality evidence</summary>${renderEvidenceList(report.evidence.business_quality)}</details>
+    <details><summary>Growth evidence</summary>${renderEvidenceList(report.evidence.growth)}</details>
+    <details><summary>Financial strength evidence</summary>${renderEvidenceList(report.evidence.financial_strength)}</details>
+    <details><summary>Valuation evidence</summary>${renderEvidenceList(report.evidence.valuation)}</details>
+    <details><summary>Risk evidence</summary>${renderEvidenceList(report.evidence.risk)}</details>`;
+
+  const fv = report.fair_value;
+  const fvLine =
+    fv.low != null && fv.high != null
+      ? `${fmtMoney(fv.low)} &ndash; ${fmtMoney(fv.high)} (current price ${fmtMoney(fv.current_price)}, ` +
+        `upside ${fmtPct(fv.upside_low_pct)} to ${fmtPct(fv.upside_high_pct)})`
+      : "n/a (insufficient data)";
+
+  return `
+    <h3>${report.company_name} (${report.ticker})</h3>
+    <div class="score-grid">${grid}</div>
+    ${trendsRow}
+    ${evidence}
+    <div class="case-box bull"><strong>Bull case:</strong> ${report.bull_case}</div>
+    <div class="case-box bear"><strong>Bear case:</strong> ${report.bear_case}</div>
+    <div class="case-box flags"><strong>Major red flags:</strong>
+      <ul>${report.red_flags.map((f) => `<li>${f}</li>`).join("")}</ul>
+    </div>
+    <p><strong>Estimated fair-value range:</strong> ${fvLine}</p>
+    <p><strong>Confidence:</strong> ${report.confidence}%
+      <span class="hint">&mdash; narrative source: ${report.narrative_source}</span></p>`;
+}
+
+document.getElementById("form-analyst").addEventListener("submit", async (evt) => {
+  evt.preventDefault();
+  const form = evt.target;
+  const out = document.getElementById("result-analyst");
+  const fields = fieldsToObject(form);
+  const body = {
+    ticker: fields.ticker,
+    llm_backend: fields.llm_backend || null,
+    force_refresh: form.querySelector("[name=force_refresh]").checked,
+  };
+  setBusy(form, true);
+  out.innerHTML = "Fetching filings and scoring…";
+  try {
+    const result = await postJSON("/api/fundamentals", body);
+    out.innerHTML = renderScoreCard(result) + (result.chart_png_base64 ? renderChart(result.chart_png_base64) : "");
+  } catch (err) {
+    out.innerHTML = renderError(err);
+  } finally {
+    setBusy(form, false);
+  }
+});
+
+// ---- Fundamentals compare ----
+
+document.getElementById("form-analyst-compare").addEventListener("submit", async (evt) => {
+  evt.preventDefault();
+  const form = evt.target;
+  const out = document.getElementById("result-analyst-compare");
+  const fields = fieldsToObject(form);
+  const tickers = fields.tickers.split(",").map((t) => t.trim()).filter(Boolean);
+  setBusy(form, true);
+  out.innerHTML = "Analyzing each ticker…";
+  try {
+    const result = await postJSON("/api/fundamentals/compare", { tickers });
+    const rows = result.rows
+      .map(
+        (r, i) => `<tr>
+          <td>${i + 1}</td><td>${r.ticker}</td><td>${r.company_name}</td>
+          <td>${fmtScore(r.composite)}</td>
+          <td>${fmtScore(r.business_quality)}</td><td>${fmtScore(r.growth)}</td>
+          <td>${fmtScore(r.financial_strength)}</td><td>${fmtScore(r.valuation)}</td>
+          <td>${r.risk_label || "n/a"}</td>
+          <td>${r.revenue_trend}</td><td>${r.fcf_status}</td><td>${r.debt_position}</td>
+          <td>${r.confidence}%</td>
+        </tr>`
+      )
+      .join("");
+    const errorLines = Object.entries(result.errors)
+      .map(([t, e]) => `<li>${t}: ${e}</li>`)
+      .join("");
+    out.innerHTML =
+      '<div class="table-scroll"><table class="data-table"><thead><tr><th>Rank</th><th>Ticker</th><th>Company</th>' +
+      "<th>Composite</th><th>Quality</th><th>Growth</th><th>Fin. strength</th><th>Valuation</th>" +
+      "<th>Risk</th><th>Revenue</th><th>FCF</th><th>Debt</th><th>Confidence</th></tr></thead>" +
+      `<tbody>${rows}</tbody></table></div>` +
+      (errorLines ? `<p class="error">Errors:</p><ul class="error">${errorLines}</ul>` : "");
+  } catch (err) {
+    out.innerHTML = renderError(err);
+  } finally {
+    setBusy(form, false);
+  }
+});
+
 // ---- Model dropdowns ----
 
 function modelOptionsHTML(models) {

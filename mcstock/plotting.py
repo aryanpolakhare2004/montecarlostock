@@ -52,6 +52,21 @@ def plot_strategy_comparison(mean_returns: dict[str, float]) -> bytes:
     return _render_png(fig, ax, "Strategy comparison (mean return)", "Strategy", "Mean return", show_legend=False)
 
 
+def plot_fundamentals_overview(metrics_history: list[dict], title: str) -> bytes:
+    """Revenue, net income, and free cash flow by fiscal year, for the fundamentals dashboard."""
+    years = [row["fiscal_year"] for row in metrics_history]
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for key, label, color in (
+        ("revenue", "Revenue", "#4f8cff"),
+        ("net_income", "Net income", "#3ecf8e"),
+        ("free_cash_flow", "Free cash flow", "#f2a93b"),
+    ):
+        values = [row.get(key) for row in metrics_history]
+        ax.plot(years, values, marker="o", label=label, color=color)
+    ax.axhline(0, color="gray", linewidth=0.8)
+    return _render_png(fig, ax, title, "Fiscal year", "USD")
+
+
 def save_png(png_bytes: bytes, out_path: str) -> None:
     with open(out_path, "wb") as f:
         f.write(png_bytes)

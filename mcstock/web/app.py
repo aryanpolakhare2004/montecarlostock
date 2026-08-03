@@ -12,6 +12,8 @@ from pydantic import BaseModel
 
 from .. import data, gbm, plotting
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
+from ..fundamentals import analyst as fundamentals_analyst
+from ..fundamentals import compare as fundamentals_compare
 from ..historical_backtest import realized_daily_returns, resample_return_series, summarize_equity
 from ..ml.dataset import build_dataset, build_latest_features
 from ..ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
@@ -39,6 +41,11 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(LookupError)
+async def lookup_error_handler(request: Request, exc: LookupError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -115,6 +122,17 @@ class CompareRequest(BaseModel):
     fast: int = 20
     slow: int = 50
     model_ids: list[int] = []
+
+
+class FundamentalsRequest(BaseModel):
+    ticker: str
+    force_refresh: bool = False
+    llm_backend: Optional[str] = None
+
+
+class FundamentalsCompareRequest(BaseModel):
+    tickers: list[str]
+    llm_backend: Optional[str] = None
 
 
 # ---- simulation endpoints ----
@@ -235,6 +253,36 @@ def api_portfolio(req: PortfolioRequest) -> dict:
         "run_id": run_id, "weights": dict(zip(tickers, weights)),
         "summary": summary, "chart_png_base64": _png_b64(png),
     }
+
+
+# ---- fundamentals (investment analyst) endpoints ----
+
+@app.post("/api/fundamentals")
+def api_fundamentals(req: FundamentalsRequest) -> dict:
+    report = fundamentals_analyst.analyze(
+        req.ticker, llm_backend_name=req.llm_backend, force_refresh=req.force_refresh
+    )
+    png = None
+    if report["metrics_history"]:
+        png = plotting.plot_fundamentals_overview(
+            report["metrics_history"], f"{report['ticker']} revenue / net income / FCF"
+        )
+
+    db.record_run(
+        "fundamentals", report["ticker"], req.model_dump(),
+        {"scores": report["scores"], "confidence": report["confidence"]}, png,
+    )
+    response = dict(report)
+    response["chart_png_base64"] = _png_b64(png) if png else None
+    return response
+
+
+@app.post("/api/fundamentals/compare")
+def api_fundamentals_compare(req: FundamentalsCompareRequest) -> dict:
+    if not req.tickers:
+        raise HTTPException(400, "at least one ticker is required")
+    result = fundamentals_compare.compare(req.tickers, llm_backend_name=req.llm_backend)
+    return {"rows": result["rows"], "reports": result["reports"], "errors": result["errors"]}
 
 
 # ---- ML endpoints ----
