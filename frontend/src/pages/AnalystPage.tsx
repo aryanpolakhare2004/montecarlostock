@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
-import { ChartImage } from '../components/ChartImage';
 import { ErrorBox } from '../components/ErrorBox';
 import { ScoreCard } from '../components/ScoreCard';
 import type { FundamentalsReport } from '../types';
@@ -62,12 +61,7 @@ export function AnalystPage() {
       <div className="result">
         {busy && 'Fetching filings and scoring…'}
         {error && <ErrorBox error={error} />}
-        {result && (
-          <>
-            <ScoreCard report={result} />
-            <ChartImage base64Png={result.chart_png_base64} />
-          </>
-        )}
+        {result && <ScoreCard report={result} />}
       </div>
     </section>
   );

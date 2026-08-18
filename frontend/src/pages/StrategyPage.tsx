@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
-import { ChartImage } from '../components/ChartImage';
 import { ErrorBox } from '../components/ErrorBox';
+import { ExportButtons } from '../components/ExportButtons';
+import { Histogram } from '../components/charts/Histogram';
 import type { useModels } from '../hooks/useModels';
 import type { StrategyRequest, StrategyResponse } from '../types';
 
@@ -118,7 +119,11 @@ export function StrategyPage({ modelOptions }: { modelOptions: ModelOptions }) {
         {result && (
           <>
             <StatTable summary={result.summary} />
-            <ChartImage base64Png={result.chart_png_base64} />
+            <ExportButtons runId={result.run_id} csvFilename={`strategy_${ticker}_${result.run_id}.csv`} csvRows={result.distribution} />
+            <Histogram
+              data={result.distribution} xLabel="Total return" referenceValue={0}
+              formatValue={(v) => `${(v * 100).toFixed(1)}%`}
+            />
           </>
         )}
       </div>

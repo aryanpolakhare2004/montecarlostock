@@ -1,4 +1,5 @@
 import { fmtMoney, fmtPct, fmtScore } from '../format';
+import { TrendLineChart, type FundamentalsTrendRow } from './charts/TrendLineChart';
 import type { FundamentalsReport } from '../types';
 
 function EvidenceList({ items }: { items: string[] | undefined }) {
@@ -61,6 +62,10 @@ export function ScoreCard({ report }: { report: FundamentalsReport }) {
           Share dilution: <strong>{t.share_dilution}</strong>
         </span>
       </div>
+
+      {report.metrics_history.length > 0 && (
+        <TrendLineChart data={report.metrics_history as unknown as FundamentalsTrendRow[]} />
+      )}
 
       <details>
         <summary>Business quality evidence</summary>

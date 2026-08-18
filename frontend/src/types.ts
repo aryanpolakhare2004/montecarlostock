@@ -2,6 +2,21 @@
 
 export type StatSummary = Record<string, number>;
 
+export interface BandPoint {
+  step: number;
+  p5: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p95: number;
+}
+
+export interface HistogramBin {
+  bin_start: number;
+  bin_end: number;
+  count: number;
+}
+
 export interface StrategySummary {
   mean_return: number;
   median_return: number;
@@ -30,6 +45,8 @@ export interface PriceResponse {
   sigma: number;
   summary: StatSummary;
   chart_png_base64: string;
+  bands: BandPoint[];
+  distribution: HistogramBin[];
 }
 
 // ---- Strategy ----
@@ -51,6 +68,7 @@ export interface StrategyResponse {
   run_id: number;
   summary: StrategySummary;
   chart_png_base64: string;
+  distribution: HistogramBin[];
 }
 
 // ---- Compare (strategies) ----
@@ -91,6 +109,7 @@ export interface PortfolioResponse {
   weights: Record<string, number>;
   summary: StatSummary;
   chart_png_base64: string;
+  bands: BandPoint[];
 }
 
 // ---- Train / Predict / Backtest ML ----
@@ -135,6 +154,7 @@ export interface BacktestMlResponse {
   run_id: number;
   summary: StatSummary;
   chart_png_base64: string;
+  bands: BandPoint[];
 }
 
 // ---- Fundamentals (AI investment analyst) ----
@@ -261,6 +281,25 @@ export interface WatchlistEntry {
 export interface WatchlistResponse {
   tickers: WatchlistEntry[];
   errors: Record<string, string>;
+}
+
+// ---- Alerts ----
+
+export interface Alert {
+  id: number;
+  ticker: string;
+  metric: 'price' | 'volatility';
+  operator: 'above' | 'below';
+  threshold: number;
+  created_at: string;
+  triggered_at: string | null;
+}
+
+export interface AlertCreateRequest {
+  ticker: string;
+  metric: 'price' | 'volatility';
+  operator: 'above' | 'below';
+  threshold: number;
 }
 
 // ---- Terminal ----

@@ -1,4 +1,5 @@
 import type {
+  Alert, AlertCreateRequest,
   BacktestMlRequest, BacktestMlResponse,
   CompareRequest, CompareResponse,
   FundamentalsCompareRequest, FundamentalsCompareResponse,
@@ -55,6 +56,10 @@ export const api = {
   addWatchlist: (ticker: string) => postJSON<WatchlistEntry>('/api/watchlist', { ticker }),
   removeWatchlist: (ticker: string) =>
     fetch(`/api/watchlist/${encodeURIComponent(ticker)}`, { method: 'DELETE' }).then((r) => handle<{ removed: string }>(r)),
+  listAlerts: () => getJSON<Alert[]>('/api/alerts'),
+  addAlert: (req: AlertCreateRequest) => postJSON<Alert>('/api/alerts', req),
+  removeAlert: (id: number) =>
+    fetch(`/api/alerts/${id}`, { method: 'DELETE' }).then((r) => handle<{ removed: number }>(r)),
   terminal: (req: TerminalRequest) => postJSON<TerminalResponse>('/api/terminal', req),
 };
 

@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
 import { Sparkline } from '../components/Sparkline';
+import { useToast } from '../components/toast';
 import { fmtPct, fmtScore } from '../format';
-import type { WatchlistResponse } from '../types';
+import type { Alert, WatchlistResponse } from '../types';
+
+const ALERT_POLL_MS = 60_000;
 
 export function WatchlistPage() {
   const [data, setData] = useState<WatchlistResponse | null>(null);
@@ -11,15 +14,44 @@ export function WatchlistPage() {
   const [newTicker, setNewTicker] = useState('');
   const [busy, setBusy] = useState(false);
   const [addError, setAddError] = useState<Error | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertFormTicker, setAlertFormTicker] = useState<string | null>(null);
+  const [alertMetric, setAlertMetric] = useState<Alert['metric']>('price');
+  const [alertOperator, setAlertOperator] = useState<Alert['operator']>('above');
+  const [alertThreshold, setAlertThreshold] = useState('');
+  const seenTriggeredIds = useRef<Set<number>>(new Set());
+  const alertsInitialized = useRef(false);
+  const { showToast } = useToast();
 
   const load = useCallback(() => {
     setLoadError(null);
     api.listWatchlist().then(setData).catch(setLoadError);
   }, []);
 
+  const loadAlerts = useCallback(() => {
+    api
+      .listAlerts()
+      .then((next) => {
+        for (const alert of next) {
+          if (alert.triggered_at) {
+            if (!seenTriggeredIds.current.has(alert.id) && alertsInitialized.current) {
+              showToast(`${alert.ticker}: ${alert.metric} ${alert.operator} ${alert.threshold} triggered`, 'info');
+            }
+            seenTriggeredIds.current.add(alert.id);
+          }
+        }
+        alertsInitialized.current = true;
+        setAlerts(next);
+      })
+      .catch(() => {});
+  }, [showToast]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadAlerts();
+    const interval = setInterval(loadAlerts, ALERT_POLL_MS);
+    return () => clearInterval(interval);
+  }, [load, loadAlerts]);
 
   async function onAdd(evt: React.FormEvent) {
     evt.preventDefault();
@@ -27,11 +59,14 @@ export function WatchlistPage() {
     setBusy(true);
     setAddError(null);
     try {
-      await api.addWatchlist(newTicker.trim());
+      const added = await api.addWatchlist(newTicker.trim());
       setNewTicker('');
       load();
+      showToast(`Added ${added.ticker} to watchlist`, 'success');
     } catch (err) {
-      setAddError(err instanceof ApiError ? err : new Error(String(err)));
+      const error = err instanceof ApiError ? err : new Error(String(err));
+      setAddError(error);
+      showToast(`Couldn't add ${newTicker.trim().toUpperCase()}: ${error.message}`, 'error');
     } finally {
       setBusy(false);
     }
@@ -40,15 +75,51 @@ export function WatchlistPage() {
   async function onRemove(ticker: string) {
     await api.removeWatchlist(ticker);
     load();
+    showToast(`Removed ${ticker} from watchlist`, 'info');
+  }
+
+  function alertsFor(ticker: string): Alert[] {
+    return alerts.filter((a) => a.ticker === ticker);
+  }
+
+  function openAlertForm(ticker: string) {
+    setAlertFormTicker(ticker);
+    setAlertMetric('price');
+    setAlertOperator('above');
+    setAlertThreshold('');
+  }
+
+  async function onAddAlert(evt: React.FormEvent, ticker: string) {
+    evt.preventDefault();
+    if (!alertThreshold.trim()) return;
+    try {
+      await api.addAlert({
+        ticker,
+        metric: alertMetric,
+        operator: alertOperator,
+        threshold: Number(alertThreshold),
+      });
+      setAlertFormTicker(null);
+      loadAlerts();
+      showToast(`Alert added for ${ticker}`, 'success');
+    } catch (err) {
+      const error = err instanceof ApiError ? err : new Error(String(err));
+      showToast(`Couldn't add alert: ${error.message}`, 'error');
+    }
+  }
+
+  async function onRemoveAlert(id: number) {
+    await api.removeAlert(id);
+    loadAlerts();
   }
 
   return (
     <section>
       <h2>Watchlist</h2>
       <p className="hint">
-        Quick glance across the tickers you follow: last price, day change, a 30-day sparkline, and the same
+        Quick glance across the tickers you follow: last price, day change, a 30-day sparkline, the same
         quality/growth/financial-strength/valuation scorecard as the Analyst tab (computed from cached SEC data,
-        so repeat visits load fast).
+        so repeat visits load fast), and price/volatility alerts checked in the background.
       </p>
 
       <form className="run-form" onSubmit={onAdd}>
@@ -70,7 +141,8 @@ export function WatchlistPage() {
               <thead>
                 <tr>
                   <th>Ticker</th><th>Company</th><th>Price</th><th>Day change</th><th>30d</th>
-                  <th>Quality</th><th>Growth</th><th>Fin. strength</th><th>Valuation</th><th>Risk</th><th></th>
+                  <th>Quality</th><th>Growth</th><th>Fin. strength</th><th>Valuation</th><th>Risk</th>
+                  <th>Alerts</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -93,6 +165,40 @@ export function WatchlistPage() {
                     <td>{fmtScore(row.scores.financial_strength)}</td>
                     <td>{fmtScore(row.scores.valuation)}</td>
                     <td>{row.scores.risk_label}</td>
+                    <td>
+                      <div className="alert-cell">
+                        {alertsFor(row.ticker).map((a) => (
+                          <span key={a.id} className={`alert-chip${a.triggered_at ? ' triggered' : ''}`}>
+                            {a.metric} {a.operator === 'above' ? '>' : '<'} {a.threshold}
+                            <button type="button" onClick={() => onRemoveAlert(a.id)} aria-label="Remove alert">×</button>
+                          </span>
+                        ))}
+                        {alertFormTicker === row.ticker ? (
+                          <form className="alert-form" onSubmit={(e) => onAddAlert(e, row.ticker)}>
+                            <select value={alertMetric} onChange={(e) => setAlertMetric(e.target.value as Alert['metric'])}>
+                              <option value="price">Price</option>
+                              <option value="volatility">Volatility</option>
+                            </select>
+                            <select value={alertOperator} onChange={(e) => setAlertOperator(e.target.value as Alert['operator'])}>
+                              <option value="above">above</option>
+                              <option value="below">below</option>
+                            </select>
+                            <input
+                              type="number"
+                              step="any"
+                              value={alertThreshold}
+                              onChange={(e) => setAlertThreshold(e.target.value)}
+                              placeholder="threshold"
+                              required
+                            />
+                            <button type="submit">Add</button>
+                            <button type="button" onClick={() => setAlertFormTicker(null)}>Cancel</button>
+                          </form>
+                        ) : (
+                          <button type="button" className="refresh-btn" onClick={() => openAlertForm(row.ticker)}>+ alert</button>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <button type="button" className="refresh-btn" onClick={() => onRemove(row.ticker)}>
                         remove

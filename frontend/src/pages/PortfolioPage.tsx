@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
-import { ChartImage } from '../components/ChartImage';
 import { ErrorBox } from '../components/ErrorBox';
+import { ExportButtons } from '../components/ExportButtons';
+import { FanChart } from '../components/charts/FanChart';
 import type { PortfolioResponse } from '../types';
 
 export function PortfolioPage() {
@@ -85,7 +86,8 @@ export function PortfolioPage() {
           <>
             <p>{Object.entries(result.weights).map(([t, w]) => `${t}: ${w.toFixed(3)}`).join(', ')}</p>
             <StatTable summary={result.summary} />
-            <ChartImage base64Png={result.chart_png_base64} />
+            <ExportButtons runId={result.run_id} csvFilename={`portfolio_${result.run_id}.csv`} csvRows={result.bands} />
+            <FanChart data={result.bands} yLabel="Portfolio value" />
           </>
         )}
       </div>

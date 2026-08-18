@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
-import { ChartImage } from '../components/ChartImage';
 import { ErrorBox } from '../components/ErrorBox';
+import { ExportButtons } from '../components/ExportButtons';
+import { FanChart } from '../components/charts/FanChart';
+import { Histogram } from '../components/charts/Histogram';
 import type { PriceResponse } from '../types';
 
 export function PricePage() {
@@ -72,7 +74,9 @@ export function PricePage() {
               {(result.sigma * 100).toFixed(2)}%/yr
             </p>
             <StatTable summary={result.summary} />
-            <ChartImage base64Png={result.chart_png_base64} />
+            <ExportButtons runId={result.run_id} csvFilename={`price_${ticker}_${result.run_id}.csv`} csvRows={result.bands} />
+            <FanChart data={result.bands} yLabel="Price" />
+            <Histogram data={result.distribution} xLabel="Final price" referenceValue={result.s0} />
           </>
         )}
       </div>

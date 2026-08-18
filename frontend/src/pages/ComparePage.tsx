@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
-import { ChartImage } from '../components/ChartImage';
 import { ErrorBox } from '../components/ErrorBox';
+import { ExportButtons } from '../components/ExportButtons';
+import { CategoricalBarChart } from '../components/charts/CategoricalBarChart';
 import type { useModels } from '../hooks/useModels';
 import type { CompareResponse } from '../types';
 
@@ -109,6 +110,11 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
         {error && <ErrorBox error={error} />}
         {result && (
           <>
+            <ExportButtons
+              runId={result.run_id}
+              csvFilename={`compare_${ticker}_${result.run_id}.csv`}
+              csvRows={result.ranking.map((name, i) => ({ rank: i + 1, strategy: name, ...result.results[name] }))}
+            />
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -134,7 +140,22 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
                 </tbody>
               </table>
             </div>
-            <ChartImage base64Png={result.chart_png_base64} />
+            <CategoricalBarChart
+              yLabel="Mean return"
+              formatValue={(v) => `${(v * 100).toFixed(1)}%`}
+              data={result.ranking.map((name) => {
+                const s = result.results[name];
+                return {
+                  name,
+                  value: s.mean_return,
+                  extra: [
+                    { label: 'std return', value: s.std_return.toFixed(4) },
+                    { label: 'prob profit', value: s.prob_profit.toFixed(3) },
+                    { label: 'mean max drawdown', value: s.mean_max_drawdown.toFixed(4) },
+                  ],
+                };
+              })}
+            />
           </>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
+import { useToast } from '../components/toast';
 import type { TrainRequest, TrainResponse } from '../types';
 
 export function TrainPage({ onTrained }: { onTrained: () => void }) {
@@ -14,6 +15,7 @@ export function TrainPage({ onTrained }: { onTrained: () => void }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<TrainResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const { showToast } = useToast();
 
   async function onSubmit(evt: React.FormEvent) {
     evt.preventDefault();
@@ -26,8 +28,11 @@ export function TrainPage({ onTrained }: { onTrained: () => void }) {
       });
       setResult(response);
       onTrained();
+      showToast(`Trained model #${response.model_id} for ${ticker.toUpperCase()}`, 'success');
     } catch (err) {
-      setError(err instanceof ApiError ? err : new Error(String(err)));
+      const errorObj = err instanceof ApiError ? err : new Error(String(err));
+      setError(errorObj);
+      showToast(`Training failed: ${errorObj.message}`, 'error');
     } finally {
       setBusy(false);
     }

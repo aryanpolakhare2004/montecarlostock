@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS watchlist (
     ticker TEXT PRIMARY KEY,
     added_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    operator TEXT NOT NULL,
+    threshold REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    triggered_at TEXT
+);
 """
 
 
@@ -161,6 +171,54 @@ def list_watchlist_tickers() -> list[str]:
     with get_connection() as conn:
         rows = conn.execute("SELECT ticker FROM watchlist ORDER BY added_at").fetchall()
     return [row["ticker"] for row in rows]
+
+
+def add_alert(ticker: str, metric: str, operator: str, threshold: float) -> int:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO alerts (ticker, metric, operator, threshold, created_at) VALUES (?, ?, ?, ?, ?)",
+            (ticker.upper(), metric, operator, threshold, datetime.now(timezone.utc).isoformat()),
+        )
+        return cursor.lastrowid
+
+
+def remove_alert(alert_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
+
+
+def list_alerts() -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT * FROM alerts ORDER BY created_at").fetchall()
+    return [_alert_row_to_dict(row) for row in rows]
+
+
+def list_pending_alerts() -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM alerts WHERE triggered_at IS NULL ORDER BY created_at"
+        ).fetchall()
+    return [_alert_row_to_dict(row) for row in rows]
+
+
+def mark_alert_triggered(alert_id: int) -> None:
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE alerts SET triggered_at = ? WHERE id = ?",
+            (datetime.now(timezone.utc).isoformat(), alert_id),
+        )
+
+
+def _alert_row_to_dict(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "ticker": row["ticker"],
+        "metric": row["metric"],
+        "operator": row["operator"],
+        "threshold": row["threshold"],
+        "created_at": row["created_at"],
+        "triggered_at": row["triggered_at"],
+    }
 
 
 def _model_row_to_dict(row: sqlite3.Row) -> dict:

@@ -1,7 +1,9 @@
 """FastAPI web frontend for mcstock: full CLI parity plus SQLite-backed run/model history."""
 from __future__ import annotations
 
+import asyncio
 import base64
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -10,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import data, gbm, plotting
+from .. import data, gbm, plotting, stats
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
@@ -140,6 +142,13 @@ class WatchlistAddRequest(BaseModel):
     ticker: str
 
 
+class AlertCreateRequest(BaseModel):
+    ticker: str
+    metric: str
+    operator: str
+    threshold: float
+
+
 class TerminalRequest(BaseModel):
     command: str
 
@@ -161,6 +170,8 @@ def api_price(req: PriceRequest) -> dict:
     return {
         "run_id": run_id, "s0": s0, "mu": mu, "sigma": sigma,
         "summary": summary, "chart_png_base64": _png_b64(png),
+        "bands": stats.percentile_bands(paths),
+        "distribution": stats.histogram_bins(paths[:, -1]),
     }
 
 
@@ -200,7 +211,10 @@ def api_strategy(req: StrategyRequest) -> dict:
     )
 
     run_id = db.record_run("strategy", req.ticker, req.model_dump(), summary, png)
-    return {"run_id": run_id, "summary": summary, "chart_png_base64": _png_b64(png)}
+    return {
+        "run_id": run_id, "summary": summary, "chart_png_base64": _png_b64(png),
+        "distribution": stats.histogram_bins(result["total_returns"]),
+    }
 
 
 @app.post("/api/compare")
@@ -261,6 +275,7 @@ def api_portfolio(req: PortfolioRequest) -> dict:
     return {
         "run_id": run_id, "weights": dict(zip(tickers, weights)),
         "summary": summary, "chart_png_base64": _png_b64(png),
+        "bands": stats.percentile_bands(paths),
     }
 
 
@@ -320,6 +335,29 @@ def api_watchlist_add(req: WatchlistAddRequest) -> dict:
 def api_watchlist_remove(ticker: str) -> dict:
     db.remove_watchlist_ticker(ticker)
     return {"removed": ticker.upper()}
+
+
+# ---- watchlist alert endpoints ----
+
+@app.post("/api/alerts")
+def api_alerts_add(req: AlertCreateRequest) -> dict:
+    if req.metric not in ("price", "volatility"):
+        raise HTTPException(400, f"unknown metric '{req.metric}'")
+    if req.operator not in ("above", "below"):
+        raise HTTPException(400, f"unknown operator '{req.operator}'")
+    alert_id = db.add_alert(req.ticker, req.metric, req.operator, req.threshold)
+    return next(a for a in db.list_alerts() if a["id"] == alert_id)
+
+
+@app.get("/api/alerts")
+def api_alerts_list() -> list[dict]:
+    return db.list_alerts()
+
+
+@app.delete("/api/alerts/{alert_id}")
+def api_alerts_remove(alert_id: int) -> dict:
+    db.remove_alert(alert_id)
+    return {"removed": alert_id}
 
 
 # ---- terminal endpoint ----
@@ -396,7 +434,10 @@ def api_backtest_ml(req: BacktestMLRequest) -> dict:
     png = plotting.plot_paths(equity, "ML strategy Monte Carlo projection")
 
     run_id = db.record_run("backtest_ml", record["ticker"], req.model_dump(), summary, png)
-    return {"run_id": run_id, "summary": summary, "chart_png_base64": _png_b64(png)}
+    return {
+        "run_id": run_id, "summary": summary, "chart_png_base64": _png_b64(png),
+        "bands": stats.percentile_bands(equity),
+    }
 
 
 # ---- history endpoints ----
@@ -417,3 +458,36 @@ def api_run_chart(run_id: int) -> Response:
 @app.get("/api/models")
 def api_list_models() -> list[dict]:
     return db.list_models()
+
+
+# ---- background alert checker ----
+
+ALERT_CHECK_INTERVAL_SECONDS = int(os.environ.get("MCSTOCK_ALERT_INTERVAL_SECONDS", "300"))
+
+
+def _alert_condition_met(alert: dict) -> bool:
+    prices = data.download_prices(alert["ticker"], period="3mo")
+    if alert["metric"] == "price":
+        value = float(prices.iloc[-1])
+    else:
+        returns = data.log_returns(prices)
+        _, value = data.annualize_drift_vol(returns)
+    if alert["operator"] == "above":
+        return value >= alert["threshold"]
+    return value <= alert["threshold"]
+
+
+async def _alert_check_loop() -> None:
+    while True:
+        await asyncio.sleep(ALERT_CHECK_INTERVAL_SECONDS)
+        for alert in db.list_pending_alerts():
+            try:
+                if _alert_condition_met(alert):
+                    db.mark_alert_triggered(alert["id"])
+            except Exception:
+                continue
+
+
+@app.on_event("startup")
+async def _launch_alert_checker() -> None:
+    asyncio.create_task(_alert_check_loop())
