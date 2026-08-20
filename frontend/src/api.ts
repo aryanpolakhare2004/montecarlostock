@@ -9,6 +9,7 @@ import type {
   PredictRequest, PredictResponse,
   PriceRequest, PriceResponse,
   RunRecord,
+  SentimentRequest, SentimentResponse,
   StrategyRequest, StrategyResponse,
   TerminalRequest, TerminalResponse,
   TrainRequest, TrainResponse,
@@ -50,6 +51,7 @@ export const api = {
   fundamentals: (req: FundamentalsRequest) => postJSON<FundamentalsReport>('/api/fundamentals', req),
   fundamentalsCompare: (req: FundamentalsCompareRequest) =>
     postJSON<FundamentalsCompareResponse>('/api/fundamentals/compare', req),
+  sentiment: (req: SentimentRequest) => postJSON<SentimentResponse>('/api/sentiment', req),
   listRuns: (limit = 50) => getJSON<RunRecord[]>(`/api/runs?limit=${limit}`),
   listModels: () => getJSON<ModelRecord[]>('/api/models'),
   listWatchlist: () => getJSON<WatchlistResponse>('/api/watchlist'),

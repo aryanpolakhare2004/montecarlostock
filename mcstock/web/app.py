@@ -21,7 +21,10 @@ from ..historical_backtest import realized_daily_returns, resample_return_series
 from ..ml.dataset import build_dataset, build_latest_features
 from ..ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
 from ..portfolio import portfolio_gbm_paths, summarize_portfolio
+from ..sentiment import news_sources as sentiment_news
+from ..sentiment import scorer as sentiment_scorer
 from ..strategies.buy_and_hold import BuyAndHold
+from ..strategies.mean_reversion import MeanReversion
 from ..strategies.ml_classifier import MLClassifierStrategy
 from ..strategies.moving_average import MovingAverageCrossover
 from . import db, terminal
@@ -75,6 +78,9 @@ class StrategyRequest(BaseModel):
     strategy: str = "buy-and-hold"
     fast: int = 20
     slow: int = 50
+    rsi_period: int = 14
+    oversold: float = 30.0
+    overbought: float = 70.0
     period: str = "5y"
     days: int = 252
     sims: int = 5000
@@ -124,6 +130,9 @@ class CompareRequest(BaseModel):
     seed: Optional[int] = None
     fast: int = 20
     slow: int = 50
+    rsi_period: int = 14
+    oversold: float = 30.0
+    overbought: float = 70.0
     model_ids: list[int] = []
 
 
@@ -147,6 +156,11 @@ class AlertCreateRequest(BaseModel):
     metric: str
     operator: str
     threshold: float
+
+
+class SentimentRequest(BaseModel):
+    ticker: str
+    source_group: str = "all"
 
 
 class TerminalRequest(BaseModel):
@@ -180,6 +194,8 @@ def _build_strategy(req: StrategyRequest):
         return BuyAndHold()
     if req.strategy == "sma-crossover":
         return MovingAverageCrossover(fast=req.fast, slow=req.slow)
+    if req.strategy == "mean-reversion":
+        return MeanReversion(rsi_period=req.rsi_period, oversold=req.oversold, overbought=req.overbought)
     if req.strategy == "ml-technical":
         if req.model_id is None:
             raise HTTPException(400, "model_id is required for strategy=ml-technical")
@@ -225,6 +241,7 @@ def api_compare(req: CompareRequest) -> dict:
     candidates: dict[str, object] = {
         "buy-and-hold": BuyAndHold(),
         "sma-crossover": MovingAverageCrossover(fast=req.fast, slow=req.slow),
+        "mean-reversion": MeanReversion(rsi_period=req.rsi_period, oversold=req.oversold, overbought=req.overbought),
     }
     for model_id in req.model_ids:
         record = db.get_model(model_id)
@@ -307,6 +324,41 @@ def api_fundamentals_compare(req: FundamentalsCompareRequest) -> dict:
         raise HTTPException(400, "at least one ticker is required")
     result = fundamentals_compare.compare(req.tickers, llm_backend_name=req.llm_backend)
     return {"rows": result["rows"], "reports": result["reports"], "errors": result["errors"]}
+
+
+# ---- sentiment endpoint ----
+
+@app.post("/api/sentiment")
+def api_sentiment(req: SentimentRequest) -> dict:
+    sources = SENTIMENT_SOURCE_GROUPS.get(req.source_group)
+    if not sources:
+        raise HTTPException(400, f"unknown source group '{req.source_group}'")
+
+    items = sentiment_news.fetch_all_news(req.ticker, sources=sources)
+    scored = sorted(
+        (
+            {
+                "title": item["title"],
+                "source": item["source"],
+                "published": item["published"].isoformat(),
+                "score": sentiment_scorer.score_text(item["title"]),
+            }
+            for item in items
+        ),
+        key=lambda row: row["published"],
+        reverse=True,
+    )
+    overall_sentiment = sum(row["score"] for row in scored) / len(scored) if scored else None
+    daily = sentiment_scorer.daily_sentiment_features(items)
+
+    return {
+        "ticker": req.ticker.upper(),
+        "source_group": req.source_group,
+        "item_count": len(scored),
+        "overall_sentiment": overall_sentiment,
+        "items": scored[:50],
+        "daily": [{"date": str(idx.date()), **row} for idx, row in daily.iterrows()],
+    }
 
 
 # ---- watchlist endpoints ----

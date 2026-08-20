@@ -16,6 +16,9 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
   const [blockSize, setBlockSize] = useState(5);
   const [fast, setFast] = useState(20);
   const [slow, setSlow] = useState(50);
+  const [rsiPeriod, setRsiPeriod] = useState(14);
+  const [oversold, setOversold] = useState(30);
+  const [overbought, setOverbought] = useState(70);
   const [seed, setSeed] = useState('');
   const [modelIds, setModelIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
@@ -41,6 +44,9 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
         block_size: blockSize,
         fast,
         slow,
+        rsi_period: rsiPeriod,
+        oversold,
+        overbought,
         seed: seed === '' ? null : Number(seed),
         model_ids: modelIds,
       });
@@ -56,7 +62,7 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
     <section>
       <h2>Compare algorithms on one stock</h2>
       <p className="hint">
-        Runs buy-and-hold, sma-crossover, and any trained <code>ml-technical</code>-eligible models
+        Runs buy-and-hold, sma-crossover, mean-reversion, and any trained <code>ml-technical</code>-eligible models
         (technical-only: sentiment none, volume unchecked) on the <em>same</em> resampled price paths, so the
         ranking reflects strategy skill, not lucky scenarios.
       </p>
@@ -88,6 +94,18 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
         <label>
           Slow SMA
           <input type="number" value={slow} onChange={(e) => setSlow(Number(e.target.value))} />
+        </label>
+        <label>
+          RSI period
+          <input type="number" value={rsiPeriod} onChange={(e) => setRsiPeriod(Number(e.target.value))} />
+        </label>
+        <label>
+          Oversold
+          <input type="number" value={oversold} onChange={(e) => setOversold(Number(e.target.value))} />
+        </label>
+        <label>
+          Overbought
+          <input type="number" value={overbought} onChange={(e) => setOverbought(Number(e.target.value))} />
         </label>
         <label>
           Seed

@@ -53,9 +53,12 @@ export interface PriceResponse {
 
 export interface StrategyRequest {
   ticker: string;
-  strategy: 'buy-and-hold' | 'sma-crossover' | 'ml-technical';
+  strategy: 'buy-and-hold' | 'sma-crossover' | 'mean-reversion' | 'ml-technical';
   fast?: number;
   slow?: number;
+  rsi_period?: number;
+  oversold?: number;
+  overbought?: number;
   period?: string;
   days?: number;
   sims?: number;
@@ -81,6 +84,9 @@ export interface CompareRequest {
   block_size?: number;
   fast?: number;
   slow?: number;
+  rsi_period?: number;
+  oversold?: number;
+  overbought?: number;
   seed?: number | null;
   model_ids: number[];
 }
@@ -281,6 +287,38 @@ export interface WatchlistEntry {
 export interface WatchlistResponse {
   tickers: WatchlistEntry[];
   errors: Record<string, string>;
+}
+
+// ---- Sentiment ----
+
+export interface SentimentRequest {
+  ticker: string;
+  source_group?: 'yfinance' | 'rss' | 'reddit' | 'all';
+}
+
+export interface SentimentItem {
+  title: string;
+  source: string;
+  published: string;
+  score: number;
+}
+
+export interface SentimentDailyPoint {
+  date: string;
+  sentiment_mean: number;
+  sentiment_std: number;
+  sentiment_count: number;
+  pct_positive: number;
+  pct_negative: number;
+}
+
+export interface SentimentResponse {
+  ticker: string;
+  source_group: string;
+  item_count: number;
+  overall_sentiment: number | null;
+  items: SentimentItem[];
+  daily: SentimentDailyPoint[];
 }
 
 // ---- Alerts ----

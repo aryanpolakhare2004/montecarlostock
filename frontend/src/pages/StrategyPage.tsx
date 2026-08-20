@@ -14,6 +14,9 @@ export function StrategyPage({ modelOptions }: { modelOptions: ModelOptions }) {
   const [strategy, setStrategy] = useState<StrategyRequest['strategy']>('buy-and-hold');
   const [fast, setFast] = useState(20);
   const [slow, setSlow] = useState(50);
+  const [rsiPeriod, setRsiPeriod] = useState(14);
+  const [oversold, setOversold] = useState(30);
+  const [overbought, setOverbought] = useState(70);
   const [modelId, setModelId] = useState('');
   const [period, setPeriod] = useState('5y');
   const [days, setDays] = useState(252);
@@ -35,6 +38,9 @@ export function StrategyPage({ modelOptions }: { modelOptions: ModelOptions }) {
         strategy,
         fast,
         slow,
+        rsi_period: rsiPeriod,
+        oversold,
+        overbought,
         period,
         days,
         sims,
@@ -63,6 +69,7 @@ export function StrategyPage({ modelOptions }: { modelOptions: ModelOptions }) {
           <select value={strategy} onChange={(e) => setStrategy(e.target.value as StrategyRequest['strategy'])}>
             <option value="buy-and-hold">buy-and-hold</option>
             <option value="sma-crossover">sma-crossover</option>
+            <option value="mean-reversion">mean-reversion</option>
             <option value="ml-technical">ml-technical</option>
           </select>
         </label>
@@ -75,6 +82,22 @@ export function StrategyPage({ modelOptions }: { modelOptions: ModelOptions }) {
             <label>
               Slow SMA
               <input type="number" value={slow} onChange={(e) => setSlow(Number(e.target.value))} />
+            </label>
+          </>
+        )}
+        {strategy === 'mean-reversion' && (
+          <>
+            <label>
+              RSI period
+              <input type="number" value={rsiPeriod} onChange={(e) => setRsiPeriod(Number(e.target.value))} />
+            </label>
+            <label>
+              Oversold
+              <input type="number" value={oversold} onChange={(e) => setOversold(Number(e.target.value))} />
+            </label>
+            <label>
+              Overbought
+              <input type="number" value={overbought} onChange={(e) => setOverbought(Number(e.target.value))} />
             </label>
           </>
         )}

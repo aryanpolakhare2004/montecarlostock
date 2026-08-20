@@ -2,7 +2,8 @@
 
 from .base import Strategy
 from .buy_and_hold import BuyAndHold
+from .mean_reversion import MeanReversion
 from .ml_classifier import MLClassifierStrategy
 from .moving_average import MovingAverageCrossover
 
-__all__ = ["Strategy", "BuyAndHold", "MovingAverageCrossover", "MLClassifierStrategy"]
+__all__ = ["Strategy", "BuyAndHold", "MovingAverageCrossover", "MLClassifierStrategy", "MeanReversion"]

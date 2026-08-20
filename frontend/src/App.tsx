@@ -11,6 +11,7 @@ import { PredictPage } from './pages/PredictPage';
 import { BacktestMlPage } from './pages/BacktestMlPage';
 import { AnalystPage } from './pages/AnalystPage';
 import { AnalystComparePage } from './pages/AnalystComparePage';
+import { SentimentPage } from './pages/SentimentPage';
 import { WatchlistPage } from './pages/WatchlistPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { HistoryPage } from './pages/HistoryPage';
@@ -46,6 +47,7 @@ const NAV_GROUPS = [
     items: [
       { id: 'analyst', label: 'Analyst', icon: SearchIcon },
       { id: 'analyst_compare', label: 'Analyst compare', icon: LayersIcon },
+      { id: 'sentiment', label: 'Sentiment', icon: ActivityIcon },
       { id: 'watchlist', label: 'Watchlist', icon: EyeIcon },
     ],
   },
@@ -117,6 +119,7 @@ function AppShell() {
         {tab === 'backtest_ml' && <BacktestMlPage modelOptions={modelOptions} />}
         {tab === 'analyst' && <AnalystPage />}
         {tab === 'analyst_compare' && <AnalystComparePage />}
+        {tab === 'sentiment' && <SentimentPage />}
         {tab === 'watchlist' && <WatchlistPage />}
         {tab === 'terminal' && <TerminalPage />}
         {tab === 'history' && <HistoryPage />}

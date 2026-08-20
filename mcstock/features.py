@@ -75,3 +75,6 @@ def _rsi(close: pd.Series, window: int = 14) -> pd.Series:
     rs = avg_gain / avg_loss.replace(0.0, np.nan)
     rsi = 100 - (100 / (1 + rs))
     return rsi.fillna(50.0)
+
+
+rsi = _rsi
