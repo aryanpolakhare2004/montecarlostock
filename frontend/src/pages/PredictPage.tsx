@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
+import { SubmitButton } from '../components/SubmitButton';
 import type { useModels } from '../hooks/useModels';
 import type { PredictResponse } from '../types';
 
@@ -35,21 +36,22 @@ export function PredictPage({ modelOptions }: { modelOptions: ModelOptions }) {
     <section>
       <h2>Predict next-period direction</h2>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Model
-          <select value={modelId} onChange={(e) => setModelId(e.target.value)}>
-            <option value="">(load models first)</option>
-            {modelOptions.models.map((m) => (
-              <option key={m.id} value={m.id}>
-                #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={busy}>Predict</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Model
+            <select value={modelId} onChange={(e) => setModelId(e.target.value)}>
+              <option value="">(load models first)</option>
+              {modelOptions.models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </label>
+          <SubmitButton busy={busy} busyLabel="Predicting…">Predict</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Predicting…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <p>

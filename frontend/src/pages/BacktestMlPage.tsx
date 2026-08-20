@@ -3,6 +3,7 @@ import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
 import { ErrorBox } from '../components/ErrorBox';
 import { ExportButtons } from '../components/ExportButtons';
+import { SubmitButton } from '../components/SubmitButton';
 import { FanChart } from '../components/charts/FanChart';
 import type { useModels } from '../hooks/useModels';
 import type { BacktestMlResponse } from '../types';
@@ -44,37 +45,43 @@ export function BacktestMlPage({ modelOptions }: { modelOptions: ModelOptions })
     <section>
       <h2>Monte Carlo project a trained model's robustness</h2>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Model
-          <select value={modelId} onChange={(e) => setModelId(e.target.value)}>
-            <option value="">(load models first)</option>
-            {modelOptions.models.map((m) => (
-              <option key={m.id} value={m.id}>
-                #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Days
-          <input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} />
-        </label>
-        <label>
-          Sims
-          <input type="number" value={sims} onChange={(e) => setSims(Number(e.target.value))} />
-        </label>
-        <label>
-          Block size
-          <input type="number" value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
-        </label>
-        <label>
-          Seed
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
-        </label>
-        <button type="submit" disabled={busy}>Run</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Model
+            <select value={modelId} onChange={(e) => setModelId(e.target.value)}>
+              <option value="">(load models first)</option>
+              {modelOptions.models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </label>
+          <details className="advanced-fields">
+            <summary>Advanced options</summary>
+            <div className="advanced-fields-grid">
+              <label>
+                Days
+                <input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+              </label>
+              <label>
+                Sims
+                <input type="number" min={1} value={sims} onChange={(e) => setSims(Number(e.target.value))} />
+              </label>
+              <label>
+                Block size
+                <input type="number" min={1} value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
+              </label>
+              <label>
+                Seed
+                <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
+              </label>
+            </div>
+          </details>
+          <SubmitButton busy={busy}>Run</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Running…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>

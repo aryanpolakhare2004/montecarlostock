@@ -232,6 +232,69 @@ main {
 
 .run-form button:disabled { opacity: 0.6; cursor: default; }
 
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.run-form-fields {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tab-hidden {
+  display: none;
+}
+
+.advanced-fields {
+  width: 100%;
+  order: 5;
+}
+
+.advanced-fields summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 0.3rem 0;
+  list-style: none;
+  user-select: none;
+}
+
+.advanced-fields summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-fields summary::before {
+  content: '▸ ';
+}
+
+.advanced-fields[open] summary::before {
+  content: '▾ ';
+}
+
+.advanced-fields-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
 .hint {
   color: var(--muted);
   font-size: 0.85rem;
@@ -673,6 +736,9 @@ ul.evidence {
 }
 
 .toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
   padding: 0.7rem 1rem;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -682,6 +748,25 @@ ul.evidence {
   color: var(--text);
   box-shadow: var(--shadow-card);
   animation: toast-in 0.18s ease;
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  color: var(--text);
 }
 
 .toast-success { border-left-color: var(--good); }

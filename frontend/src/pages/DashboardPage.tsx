@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Sparkline } from '../components/Sparkline';
-import { fmtPct, fmtScore } from '../format';
+import { fmtMoney, fmtPct, fmtScore } from '../format';
 import type { ModelRecord, RunRecord, WatchlistEntry } from '../types';
 import type { TabId } from '../App';
 
@@ -68,7 +68,7 @@ export function DashboardPage({ onNavigate }: Props) {
               {watchlist.map((row) => (
                 <tr key={row.ticker}>
                   <td>{row.ticker}</td>
-                  <td>${row.last_price.toFixed(2)}</td>
+                  <td>{fmtMoney(row.last_price)}</td>
                   <td className={row.day_change_pct != null && row.day_change_pct >= 0 ? 'direction up' : 'direction down'}>
                     {fmtPct(row.day_change_pct)}
                   </td>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
 import { ExportButtons } from '../components/ExportButtons';
+import { SubmitButton } from '../components/SubmitButton';
 import { CategoricalBarChart } from '../components/charts/CategoricalBarChart';
 import type { useModels } from '../hooks/useModels';
 import type { CompareResponse } from '../types';
@@ -32,8 +33,12 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
 
   async function onSubmit(evt: React.FormEvent) {
     evt.preventDefault();
-    setBusy(true);
     setError(null);
+    if (oversold >= overbought) {
+      setError(new Error('Oversold threshold must be smaller than overbought threshold'));
+      return;
+    }
+    setBusy(true);
     setResult(null);
     try {
       const response = await api.compare({
@@ -67,64 +72,76 @@ export function ComparePage({ modelOptions }: { modelOptions: ModelOptions }) {
         ranking reflects strategy skill, not lucky scenarios.
       </p>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Ticker
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
-        </label>
-        <label>
-          Period
-          <input value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </label>
-        <label>
-          Days
-          <input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} />
-        </label>
-        <label>
-          Sims
-          <input type="number" value={sims} onChange={(e) => setSims(Number(e.target.value))} />
-        </label>
-        <label>
-          Block size
-          <input type="number" value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
-        </label>
-        <label>
-          Fast SMA
-          <input type="number" value={fast} onChange={(e) => setFast(Number(e.target.value))} />
-        </label>
-        <label>
-          Slow SMA
-          <input type="number" value={slow} onChange={(e) => setSlow(Number(e.target.value))} />
-        </label>
-        <label>
-          RSI period
-          <input type="number" value={rsiPeriod} onChange={(e) => setRsiPeriod(Number(e.target.value))} />
-        </label>
-        <label>
-          Oversold
-          <input type="number" value={oversold} onChange={(e) => setOversold(Number(e.target.value))} />
-        </label>
-        <label>
-          Overbought
-          <input type="number" value={overbought} onChange={(e) => setOverbought(Number(e.target.value))} />
-        </label>
-        <label>
-          Seed
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
-        </label>
-        <label>
-          Include ML models
-          <select multiple size={4} value={modelIds.map(String)} onChange={onModelIdsChange}>
-            {modelOptions.technicalOnly.map((m) => (
-              <option key={m.id} value={m.id}>
-                #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={busy}>Compare</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Ticker
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
+          </label>
+          <label>
+            Include ML models
+            <select multiple size={4} value={modelIds.map(String)} onChange={onModelIdsChange}>
+              {modelOptions.technicalOnly.map((m) => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} {m.ticker} {m.model_type} (test acc {m.test_accuracy.toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </label>
+          <details className="advanced-fields">
+            <summary>Advanced options</summary>
+            <div className="advanced-fields-grid">
+              <label>
+                Period
+                <input value={period} onChange={(e) => setPeriod(e.target.value)} />
+              </label>
+              <label>
+                Days
+                <input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+              </label>
+              <label>
+                Sims
+                <input type="number" min={1} value={sims} onChange={(e) => setSims(Number(e.target.value))} />
+              </label>
+              <label>
+                Block size
+                <input type="number" min={1} value={blockSize} onChange={(e) => setBlockSize(Number(e.target.value))} />
+              </label>
+              <label>
+                Fast SMA
+                <input type="number" min={1} value={fast} onChange={(e) => setFast(Number(e.target.value))} />
+              </label>
+              <label>
+                Slow SMA
+                <input type="number" min={1} value={slow} onChange={(e) => setSlow(Number(e.target.value))} />
+              </label>
+              <label>
+                RSI period
+                <input type="number" min={1} value={rsiPeriod} onChange={(e) => setRsiPeriod(Number(e.target.value))} />
+              </label>
+              <label>
+                Oversold
+                <input
+                  type="number" min={0} max={100} value={oversold}
+                  onChange={(e) => setOversold(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Overbought
+                <input
+                  type="number" min={0} max={100} value={overbought}
+                  onChange={(e) => setOverbought(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Seed
+                <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
+              </label>
+            </div>
+          </details>
+          <SubmitButton busy={busy}>Compare</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Running…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>

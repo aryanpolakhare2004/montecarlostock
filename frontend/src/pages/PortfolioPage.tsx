@@ -3,6 +3,7 @@ import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
 import { ErrorBox } from '../components/ErrorBox';
 import { ExportButtons } from '../components/ExportButtons';
+import { SubmitButton } from '../components/SubmitButton';
 import { FanChart } from '../components/charts/FanChart';
 import type { PortfolioResponse } from '../types';
 
@@ -49,38 +50,44 @@ export function PortfolioPage() {
     <section>
       <h2>Simulate a multi-asset portfolio</h2>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Tickers (comma-separated)
-          <input value={tickers} onChange={(e) => setTickers(e.target.value)} required placeholder="AAPL,MSFT,GOOG" />
-        </label>
-        <label>
-          Weights (comma-separated, optional)
-          <input value={weights} onChange={(e) => setWeights(e.target.value)} placeholder="0.5,0.3,0.2" />
-        </label>
-        <label>
-          Starting value
-          <input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} />
-        </label>
-        <label>
-          Period
-          <input value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </label>
-        <label>
-          Days
-          <input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} />
-        </label>
-        <label>
-          Sims
-          <input type="number" value={sims} onChange={(e) => setSims(Number(e.target.value))} />
-        </label>
-        <label>
-          Seed
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
-        </label>
-        <button type="submit" disabled={busy}>Run</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Tickers (comma-separated)
+            <input value={tickers} onChange={(e) => setTickers(e.target.value)} required placeholder="AAPL,MSFT,GOOG" />
+          </label>
+          <label>
+            Weights (comma-separated, optional)
+            <input value={weights} onChange={(e) => setWeights(e.target.value)} placeholder="0.5,0.3,0.2" />
+          </label>
+          <label>
+            Starting value
+            <input type="number" min={0} value={value} onChange={(e) => setValue(Number(e.target.value))} />
+          </label>
+          <details className="advanced-fields">
+            <summary>Advanced options</summary>
+            <div className="advanced-fields-grid">
+              <label>
+                Period
+                <input value={period} onChange={(e) => setPeriod(e.target.value)} />
+              </label>
+              <label>
+                Days
+                <input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+              </label>
+              <label>
+                Sims
+                <input type="number" min={1} value={sims} onChange={(e) => setSims(Number(e.target.value))} />
+              </label>
+              <label>
+                Seed
+                <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
+              </label>
+            </div>
+          </details>
+          <SubmitButton busy={busy}>Run</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Running…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>

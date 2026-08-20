@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
+import { SubmitButton } from '../components/SubmitButton';
 import type { SentimentRequest, SentimentResponse } from '../types';
 
-function fmtScore(v: number): string {
+function fmtSentiment(v: number): string {
   return v >= 0 ? `+${v.toFixed(3)}` : v.toFixed(3);
 }
 
@@ -42,26 +43,27 @@ export function SentimentPage() {
         <code> REDDIT_CLIENT_ID</code>/<code>REDDIT_CLIENT_SECRET</code>).
       </p>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Ticker
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
-        </label>
-        <label>
-          Sources
-          <select
-            value={sourceGroup}
-            onChange={(e) => setSourceGroup(e.target.value as NonNullable<SentimentRequest['source_group']>)}
-          >
-            <option value="all">all</option>
-            <option value="yfinance">yfinance</option>
-            <option value="rss">rss</option>
-            <option value="reddit">reddit</option>
-          </select>
-        </label>
-        <button type="submit" disabled={busy}>Analyze</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Ticker
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
+          </label>
+          <label>
+            Sources
+            <select
+              value={sourceGroup}
+              onChange={(e) => setSourceGroup(e.target.value as NonNullable<SentimentRequest['source_group']>)}
+            >
+              <option value="all">all</option>
+              <option value="yfinance">yfinance</option>
+              <option value="rss">rss</option>
+              <option value="reddit">reddit</option>
+            </select>
+          </label>
+          <SubmitButton busy={busy} busyLabel="Fetching headlines…">Analyze</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Fetching and scoring headlines…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>
@@ -69,7 +71,7 @@ export function SentimentPage() {
               <div className="stat-tile">
                 <div className="stat-tile-label">Overall sentiment</div>
                 <div className={`stat-tile-value ${result.overall_sentiment != null ? directionClass(result.overall_sentiment) : ''}`}>
-                  {result.overall_sentiment != null ? fmtScore(result.overall_sentiment) : 'n/a'}
+                  {result.overall_sentiment != null ? fmtSentiment(result.overall_sentiment) : 'n/a'}
                 </div>
               </div>
               <div className="stat-tile">
@@ -96,7 +98,7 @@ export function SentimentPage() {
                     {result.daily.map((d) => (
                       <tr key={d.date}>
                         <td>{d.date}</td>
-                        <td className={directionClass(d.sentiment_mean)}>{fmtScore(d.sentiment_mean)}</td>
+                        <td className={directionClass(d.sentiment_mean)}>{fmtSentiment(d.sentiment_mean)}</td>
                         <td>{d.sentiment_count}</td>
                         <td>{(d.pct_positive * 100).toFixed(0)}%</td>
                         <td>{(d.pct_negative * 100).toFixed(0)}%</td>
@@ -120,7 +122,7 @@ export function SentimentPage() {
                       <tr key={i}>
                         <td>{new Date(item.published).toLocaleString()}</td>
                         <td>{item.source}</td>
-                        <td className={directionClass(item.score)}>{fmtScore(item.score)}</td>
+                        <td className={directionClass(item.score)}>{fmtSentiment(item.score)}</td>
                         <td>{item.title}</td>
                       </tr>
                     ))}

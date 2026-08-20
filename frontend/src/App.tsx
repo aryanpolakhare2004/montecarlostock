@@ -64,12 +64,19 @@ export type TabId = (typeof NAV_GROUPS)[number]['items'][number]['id'];
 
 function AppShell() {
   const [tab, setTab] = useState<TabId>('dashboard');
+  const [visited, setVisited] = useState<Set<TabId>>(new Set(['dashboard']));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const modelOptions = useModels();
 
   function navigate(next: TabId) {
     setTab(next);
+    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
     setSidebarOpen(false);
+  }
+
+  function pane(id: TabId, node: React.ReactNode) {
+    if (!visited.has(id)) return null;
+    return <div className={tab === id ? '' : 'tab-hidden'}>{node}</div>;
   }
 
   return (
@@ -109,20 +116,20 @@ function AppShell() {
       </aside>
 
       <main>
-        {tab === 'dashboard' && <DashboardPage onNavigate={navigate} />}
-        {tab === 'price' && <PricePage />}
-        {tab === 'strategy' && <StrategyPage modelOptions={modelOptions} />}
-        {tab === 'compare' && <ComparePage modelOptions={modelOptions} />}
-        {tab === 'portfolio' && <PortfolioPage />}
-        {tab === 'train' && <TrainPage onTrained={modelOptions.reload} />}
-        {tab === 'predict' && <PredictPage modelOptions={modelOptions} />}
-        {tab === 'backtest_ml' && <BacktestMlPage modelOptions={modelOptions} />}
-        {tab === 'analyst' && <AnalystPage />}
-        {tab === 'analyst_compare' && <AnalystComparePage />}
-        {tab === 'sentiment' && <SentimentPage />}
-        {tab === 'watchlist' && <WatchlistPage />}
-        {tab === 'terminal' && <TerminalPage />}
-        {tab === 'history' && <HistoryPage />}
+        {pane('dashboard', <DashboardPage onNavigate={navigate} />)}
+        {pane('price', <PricePage />)}
+        {pane('strategy', <StrategyPage modelOptions={modelOptions} />)}
+        {pane('compare', <ComparePage modelOptions={modelOptions} />)}
+        {pane('portfolio', <PortfolioPage />)}
+        {pane('train', <TrainPage onTrained={modelOptions.reload} />)}
+        {pane('predict', <PredictPage modelOptions={modelOptions} />)}
+        {pane('backtest_ml', <BacktestMlPage modelOptions={modelOptions} />)}
+        {pane('analyst', <AnalystPage />)}
+        {pane('analyst_compare', <AnalystComparePage />)}
+        {pane('sentiment', <SentimentPage />)}
+        {pane('watchlist', <WatchlistPage />)}
+        {pane('terminal', <TerminalPage />)}
+        {pane('history', <HistoryPage />)}
       </main>
     </div>
   );

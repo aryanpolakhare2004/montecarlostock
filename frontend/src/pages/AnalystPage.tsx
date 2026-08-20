@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
 import { ScoreCard } from '../components/ScoreCard';
+import { SubmitButton } from '../components/SubmitButton';
 import type { FundamentalsReport } from '../types';
 
 export function AnalystPage() {
@@ -40,26 +41,27 @@ export function AnalystPage() {
         LLM backend (e.g. Ollama) is configured.
       </p>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Ticker
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="MSFT" />
-        </label>
-        <label>
-          LLM backend
-          <select value={llmBackend} onChange={(e) => setLlmBackend(e.target.value)}>
-            <option value="">(server default)</option>
-            <option value="stub">stub (no LLM)</option>
-            <option value="ollama">ollama</option>
-          </select>
-        </label>
-        <label className="checkbox">
-          <input type="checkbox" checked={forceRefresh} onChange={(e) => setForceRefresh(e.target.checked)} />
-          Force refresh from SEC
-        </label>
-        <button type="submit" disabled={busy}>Analyze</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Ticker
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="MSFT" />
+          </label>
+          <label>
+            LLM backend
+            <select value={llmBackend} onChange={(e) => setLlmBackend(e.target.value)}>
+              <option value="">(server default)</option>
+              <option value="stub">stub (no LLM)</option>
+              <option value="ollama">ollama</option>
+            </select>
+          </label>
+          <label className="checkbox">
+            <input type="checkbox" checked={forceRefresh} onChange={(e) => setForceRefresh(e.target.checked)} />
+            Force refresh from SEC
+          </label>
+          <SubmitButton busy={busy} busyLabel="Fetching filings…">Analyze</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Fetching filings and scoring…'}
         {error && <ErrorBox error={error} />}
         {result && <ScoreCard report={result} />}
       </div>

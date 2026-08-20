@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
 import { Sparkline } from '../components/Sparkline';
+import { SubmitButton } from '../components/SubmitButton';
 import { useToast } from '../components/toast';
-import { fmtPct, fmtScore } from '../format';
+import { fmtMoney, fmtPct, fmtScore } from '../format';
 import type { Alert, WatchlistResponse } from '../types';
 
 const ALERT_POLL_MS = 60_000;
@@ -123,11 +124,13 @@ export function WatchlistPage() {
       </p>
 
       <form className="run-form" onSubmit={onAdd}>
-        <label>
-          Add ticker
-          <input value={newTicker} onChange={(e) => setNewTicker(e.target.value)} placeholder="AAPL" />
-        </label>
-        <button type="submit" disabled={busy}>Add</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Add ticker
+            <input value={newTicker} onChange={(e) => setNewTicker(e.target.value)} placeholder="AAPL" />
+          </label>
+          <SubmitButton busy={busy}>Add</SubmitButton>
+        </fieldset>
       </form>
       {addError && <ErrorBox error={addError} />}
 
@@ -150,7 +153,7 @@ export function WatchlistPage() {
                   <tr key={row.ticker}>
                     <td>{row.ticker}</td>
                     <td>{row.company_name}</td>
-                    <td>${row.last_price.toFixed(2)}</td>
+                    <td>{fmtMoney(row.last_price)}</td>
                     <td className={row.day_change_pct != null && row.day_change_pct >= 0 ? 'direction up' : 'direction down'}>
                       {fmtPct(row.day_change_pct)}
                     </td>

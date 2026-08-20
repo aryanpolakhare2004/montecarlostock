@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
+import { SubmitButton } from '../components/SubmitButton';
 import { useToast } from '../components/toast';
 import type { TrainRequest, TrainResponse } from '../types';
 
@@ -42,52 +43,62 @@ export function TrainPage({ onTrained }: { onTrained: () => void }) {
     <section>
       <h2>Train an ML classifier (binary up/down)</h2>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Ticker
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
-        </label>
-        <label>
-          Model
-          <select value={model} onChange={(e) => setModel(e.target.value as TrainRequest['model'])}>
-            <option value="logreg">logreg</option>
-            <option value="random_forest">random_forest</option>
-            <option value="gradient_boosting">gradient_boosting</option>
-          </select>
-        </label>
-        <label>
-          Sentiment
-          <select value={sentiment} onChange={(e) => setSentiment(e.target.value as TrainRequest['sentiment'])}>
-            <option value="none">none</option>
-            <option value="yfinance">yfinance</option>
-            <option value="rss">rss</option>
-            <option value="reddit">reddit</option>
-            <option value="all">all</option>
-          </select>
-        </label>
-        <label className="checkbox">
-          <input type="checkbox" checked={useVolume} onChange={(e) => setUseVolume(e.target.checked)} />
-          Use volume features
-        </label>
-        <label>
-          Period
-          <input value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </label>
-        <label>
-          Horizon (days ahead)
-          <input type="number" value={horizon} onChange={(e) => setHorizon(Number(e.target.value))} />
-        </label>
-        <label>
-          Test size
-          <input type="number" step={0.05} value={testSize} onChange={(e) => setTestSize(Number(e.target.value))} />
-        </label>
-        <button type="submit" disabled={busy}>Train</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Ticker
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
+          </label>
+          <label>
+            Model
+            <select value={model} onChange={(e) => setModel(e.target.value as TrainRequest['model'])}>
+              <option value="logreg">logreg</option>
+              <option value="random_forest">random_forest</option>
+              <option value="gradient_boosting">gradient_boosting</option>
+            </select>
+          </label>
+          <label>
+            Sentiment
+            <select value={sentiment} onChange={(e) => setSentiment(e.target.value as TrainRequest['sentiment'])}>
+              <option value="none">none</option>
+              <option value="yfinance">yfinance</option>
+              <option value="rss">rss</option>
+              <option value="reddit">reddit</option>
+              <option value="all">all</option>
+            </select>
+          </label>
+          <label className="checkbox">
+            <input type="checkbox" checked={useVolume} onChange={(e) => setUseVolume(e.target.checked)} />
+            Use volume features
+          </label>
+          <details className="advanced-fields">
+            <summary>Advanced options</summary>
+            <div className="advanced-fields-grid">
+              <label>
+                Period
+                <input value={period} onChange={(e) => setPeriod(e.target.value)} />
+              </label>
+              <label>
+                Horizon (days ahead)
+                <input type="number" min={1} value={horizon} onChange={(e) => setHorizon(Number(e.target.value))} />
+              </label>
+              <label>
+                Test size
+                <input
+                  type="number" min={0.05} max={0.5} step={0.05} value={testSize}
+                  onChange={(e) => setTestSize(Number(e.target.value))}
+                />
+              </label>
+            </div>
+          </details>
+          <SubmitButton busy={busy} busyLabel="Training…">Train</SubmitButton>
+        </fieldset>
       </form>
       <p className="hint">
         Tip: to later use a model with strategy <code>ml-technical</code>, train with sentiment{' '}
         <code>none</code> and volume features unchecked.
       </p>
       <div className="result">
-        {busy && 'Training… this can take a while (fetching data/news, fitting the model).'}
+        {busy && <p className="hint">Training… this can take a while (fetching data/news, fitting the model).</p>}
         {error && <ErrorBox error={error} />}
         {result && (
           <>

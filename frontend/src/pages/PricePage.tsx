@@ -3,8 +3,10 @@ import { api, ApiError } from '../api';
 import { StatTable } from '../components/StatTable';
 import { ErrorBox } from '../components/ErrorBox';
 import { ExportButtons } from '../components/ExportButtons';
+import { SubmitButton } from '../components/SubmitButton';
 import { FanChart } from '../components/charts/FanChart';
 import { Histogram } from '../components/charts/Histogram';
+import { fmtMoney, fmtPct } from '../format';
 import type { PriceResponse } from '../types';
 
 export function PricePage() {
@@ -42,36 +44,41 @@ export function PricePage() {
     <section>
       <h2>Simulate future price paths (GBM)</h2>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Ticker
-          <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
-        </label>
-        <label>
-          Period
-          <input value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </label>
-        <label>
-          Days
-          <input type="number" value={days} onChange={(e) => setDays(Number(e.target.value))} />
-        </label>
-        <label>
-          Sims
-          <input type="number" value={sims} onChange={(e) => setSims(Number(e.target.value))} />
-        </label>
-        <label>
-          Seed
-          <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
-        </label>
-        <button type="submit" disabled={busy}>Run</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Ticker
+            <input value={ticker} onChange={(e) => setTicker(e.target.value)} required placeholder="AAPL" />
+          </label>
+          <details className="advanced-fields">
+            <summary>Advanced options</summary>
+            <div className="advanced-fields-grid">
+              <label>
+                Period
+                <input value={period} onChange={(e) => setPeriod(e.target.value)} />
+              </label>
+              <label>
+                Days
+                <input type="number" min={1} value={days} onChange={(e) => setDays(Number(e.target.value))} />
+              </label>
+              <label>
+                Sims
+                <input type="number" min={1} value={sims} onChange={(e) => setSims(Number(e.target.value))} />
+              </label>
+              <label>
+                Seed
+                <input value={seed} onChange={(e) => setSeed(e.target.value)} placeholder="optional" />
+              </label>
+            </div>
+          </details>
+          <SubmitButton busy={busy}>Run</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Running…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>
             <p>
-              s0={result.s0.toFixed(2)} mu={(result.mu * 100).toFixed(2)}%/yr sigma=
-              {(result.sigma * 100).toFixed(2)}%/yr
+              s0={fmtMoney(result.s0)} mu={fmtPct(result.mu)}/yr sigma={fmtPct(result.sigma)}/yr
             </p>
             <StatTable summary={result.summary} />
             <ExportButtons runId={result.run_id} csvFilename={`price_${ticker}_${result.run_id}.csv`} csvRows={result.bands} />

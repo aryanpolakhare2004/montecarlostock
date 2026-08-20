@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from '../api';
 import { ErrorBox } from '../components/ErrorBox';
+import { SubmitButton } from '../components/SubmitButton';
 import { fmtScore } from '../format';
 import type { FundamentalsCompareResponse } from '../types';
 
@@ -34,14 +35,15 @@ export function AnalystComparePage() {
         strength, and valuation, minus a risk penalty.
       </p>
       <form className="run-form" onSubmit={onSubmit}>
-        <label>
-          Tickers (comma-separated)
-          <input value={tickers} onChange={(e) => setTickers(e.target.value)} required placeholder="MU,WDC,STX" />
-        </label>
-        <button type="submit" disabled={busy}>Compare</button>
+        <fieldset disabled={busy} className="run-form-fields">
+          <label>
+            Tickers (comma-separated)
+            <input value={tickers} onChange={(e) => setTickers(e.target.value)} required placeholder="MU,WDC,STX" />
+          </label>
+          <SubmitButton busy={busy} busyLabel="Analyzing…">Compare</SubmitButton>
+        </fieldset>
       </form>
       <div className="result">
-        {busy && 'Analyzing each ticker…'}
         {error && <ErrorBox error={error} />}
         {result && (
           <>
