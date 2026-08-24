@@ -15,6 +15,7 @@ import { SentimentPage } from './pages/SentimentPage';
 import { WatchlistPage } from './pages/WatchlistPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { ThemeToggle } from './components/ThemeToggle';
 import {
   ActivityIcon, ArrowUpRightIcon, BriefcaseIcon, ClockIcon, EyeIcon, HomeIcon,
   LayersIcon, LineChartIcon, ScaleIcon, SearchIcon, SlidersIcon, TargetIcon, TerminalIcon,
@@ -90,8 +91,11 @@ function AppShell() {
 
       <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar-header">
-          <h1>mcstock</h1>
-          <p className="subtitle">Monte Carlo &middot; ML &middot; AI analyst</p>
+          <div>
+            <h1>mcstock</h1>
+            <p className="subtitle">Monte Carlo &middot; ML &middot; AI analyst</p>
+          </div>
+          <ThemeToggle />
         </div>
         <nav>
           {NAV_GROUPS.map((group) => (

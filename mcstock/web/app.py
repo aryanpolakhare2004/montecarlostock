@@ -20,7 +20,7 @@ from ..fundamentals import watchlist as fundamentals_watchlist
 from ..historical_backtest import realized_daily_returns, resample_return_series, summarize_equity
 from ..ml.dataset import build_dataset, build_latest_features
 from ..ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
-from ..portfolio import portfolio_gbm_paths, summarize_portfolio
+from ..portfolio import optimize_weights, portfolio_gbm_paths, summarize_portfolio
 from ..sentiment import news_sources as sentiment_news
 from ..sentiment import scorer as sentiment_scorer
 from ..strategies.buy_and_hold import BuyAndHold
@@ -97,6 +97,13 @@ class PortfolioRequest(BaseModel):
     days: int = 252
     sims: int = 5000
     seed: Optional[int] = None
+
+
+class PortfolioOptimizeRequest(BaseModel):
+    tickers: list[str]
+    period: str = "5y"
+    objective: str = "max_sharpe"
+    risk_free_rate: float = 0.0
 
 
 class TrainRequest(BaseModel):
@@ -293,6 +300,20 @@ def api_portfolio(req: PortfolioRequest) -> dict:
         "run_id": run_id, "weights": dict(zip(tickers, weights)),
         "summary": summary, "chart_png_base64": _png_b64(png),
         "bands": stats.percentile_bands(paths),
+    }
+
+
+@app.post("/api/portfolio/optimize")
+def api_portfolio_optimize(req: PortfolioOptimizeRequest) -> dict:
+    if not req.tickers:
+        raise HTTPException(400, "at least one ticker is required")
+    prices = data.download_close_prices(req.tickers, period=req.period)
+    result = optimize_weights(prices, objective=req.objective, risk_free_rate=req.risk_free_rate)
+    return {
+        "weights": dict(zip(req.tickers, result["weights"].tolist())),
+        "expected_return": result["expected_return"],
+        "expected_volatility": result["expected_volatility"],
+        "sharpe_ratio": result["sharpe_ratio"],
     }
 
 

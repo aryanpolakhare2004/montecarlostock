@@ -4,8 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>mcstock</title>
-    <script type="module" crossorigin src="/static/assets/index-ByWZmkJR.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CJlFl1Lg.css">
+    <script>
+      (function () {
+        var theme = localStorage.getItem('mcstock-theme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.dataset.theme = theme;
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/static/assets/index-CYDZPmZO.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-DNjH708B.css">
   </head>
   <body>
     <div id="root"></div>

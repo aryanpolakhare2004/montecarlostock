@@ -118,6 +118,20 @@ export interface PortfolioResponse {
   bands: BandPoint[];
 }
 
+export interface PortfolioOptimizeRequest {
+  tickers: string[];
+  period?: string;
+  objective: 'max_sharpe' | 'min_variance';
+  risk_free_rate?: number;
+}
+
+export interface PortfolioOptimizeResponse {
+  weights: Record<string, number>;
+  expected_return: number;
+  expected_volatility: number;
+  sharpe_ratio: number | null;
+}
+
 // ---- Train / Predict / Backtest ML ----
 
 export interface TrainRequest {

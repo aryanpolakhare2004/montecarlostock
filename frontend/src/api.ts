@@ -5,6 +5,7 @@ import type {
   FundamentalsCompareRequest, FundamentalsCompareResponse,
   FundamentalsRequest, FundamentalsReport,
   ModelRecord,
+  PortfolioOptimizeRequest, PortfolioOptimizeResponse,
   PortfolioRequest, PortfolioResponse,
   PredictRequest, PredictResponse,
   PriceRequest, PriceResponse,
@@ -45,6 +46,8 @@ export const api = {
   strategy: (req: StrategyRequest) => postJSON<StrategyResponse>('/api/strategy', req),
   compare: (req: CompareRequest) => postJSON<CompareResponse>('/api/compare', req),
   portfolio: (req: PortfolioRequest) => postJSON<PortfolioResponse>('/api/portfolio', req),
+  optimizePortfolio: (req: PortfolioOptimizeRequest) =>
+    postJSON<PortfolioOptimizeResponse>('/api/portfolio/optimize', req),
   train: (req: TrainRequest) => postJSON<TrainResponse>('/api/train', req),
   predict: (req: PredictRequest) => postJSON<PredictResponse>('/api/predict', req),
   backtestMl: (req: BacktestMlRequest) => postJSON<BacktestMlResponse>('/api/backtest_ml', req),

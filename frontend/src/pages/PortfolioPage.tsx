@@ -4,12 +4,17 @@ import { StatTable } from '../components/StatTable';
 import { ErrorBox } from '../components/ErrorBox';
 import { ExportButtons } from '../components/ExportButtons';
 import { SubmitButton } from '../components/SubmitButton';
+import { useToast } from '../components/toast';
 import { FanChart } from '../components/charts/FanChart';
-import type { PortfolioResponse } from '../types';
+import { fmtPct } from '../format';
+import type { PortfolioOptimizeRequest, PortfolioResponse } from '../types';
 
 export function PortfolioPage() {
   const [tickers, setTickers] = useState('AAPL,MSFT,GOOG');
   const [weights, setWeights] = useState('');
+  const [objective, setObjective] = useState<PortfolioOptimizeRequest['objective']>('max_sharpe');
+  const [riskFreeRate, setRiskFreeRate] = useState(0);
+  const [optimizing, setOptimizing] = useState(false);
   const [value, setValue] = useState(10000);
   const [period, setPeriod] = useState('5y');
   const [days, setDays] = useState(252);
@@ -18,6 +23,40 @@ export function PortfolioPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<PortfolioResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const { showToast } = useToast();
+
+  function parsedTickers(): string[] {
+    return tickers.split(',').map((t) => t.trim()).filter(Boolean);
+  }
+
+  async function onOptimize() {
+    const tickerList = parsedTickers();
+    if (tickerList.length < 2) {
+      showToast('Enter at least two tickers to optimize weights', 'error');
+      return;
+    }
+    setOptimizing(true);
+    try {
+      const response = await api.optimizePortfolio({
+        tickers: tickerList,
+        period,
+        objective,
+        risk_free_rate: riskFreeRate,
+      });
+      setWeights(tickerList.map((t) => response.weights[t].toFixed(3)).join(','));
+      const sharpeText = response.sharpe_ratio != null ? response.sharpe_ratio.toFixed(2) : 'n/a';
+      showToast(
+        `Optimized: expected return ${fmtPct(response.expected_return)}, ` +
+          `volatility ${fmtPct(response.expected_volatility)}, Sharpe ${sharpeText}`,
+        'success',
+      );
+    } catch (err) {
+      const errorObj = err instanceof ApiError ? err : new Error(String(err));
+      showToast(`Optimization failed: ${errorObj.message}`, 'error');
+    } finally {
+      setOptimizing(false);
+    }
+  }
 
   async function onSubmit(evt: React.FormEvent) {
     evt.preventDefault();
@@ -25,7 +64,7 @@ export function PortfolioPage() {
     setError(null);
     setResult(null);
     try {
-      const tickerList = tickers.split(',').map((t) => t.trim()).filter(Boolean);
+      const tickerList = parsedTickers();
       const weightList = weights
         ? weights.split(',').map((w) => Number(w.trim())).filter((w) => !Number.isNaN(w))
         : null;
@@ -59,6 +98,26 @@ export function PortfolioPage() {
             Weights (comma-separated, optional)
             <input value={weights} onChange={(e) => setWeights(e.target.value)} placeholder="0.5,0.3,0.2" />
           </label>
+          <label>
+            Optimize for
+            <select
+              value={objective}
+              onChange={(e) => setObjective(e.target.value as PortfolioOptimizeRequest['objective'])}
+            >
+              <option value="max_sharpe">max Sharpe ratio</option>
+              <option value="min_variance">min variance</option>
+            </select>
+          </label>
+          <label>
+            Risk-free rate
+            <input
+              type="number" step={0.01} value={riskFreeRate}
+              onChange={(e) => setRiskFreeRate(Number(e.target.value))}
+            />
+          </label>
+          <button type="button" className="refresh-btn" onClick={onOptimize} disabled={optimizing}>
+            {optimizing ? 'Optimizing…' : 'Optimize weights'}
+          </button>
           <label>
             Starting value
             <input type="number" min={0} value={value} onChange={(e) => setValue(Number(e.target.value))} />
