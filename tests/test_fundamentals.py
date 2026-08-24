@@ -314,6 +314,11 @@ def test_get_backend_selects_ollama():
     assert isinstance(backend, llm_analyst.OllamaBackend)
 
 
+def test_get_backend_selects_together():
+    backend = llm_analyst.get_backend("together")
+    assert isinstance(backend, llm_analyst.TogetherBackend)
+
+
 # ---- edgar ----
 
 def test_fetch_ticker_cik_map(monkeypatch):

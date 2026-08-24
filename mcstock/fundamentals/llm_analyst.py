@@ -75,6 +75,30 @@ class StubBackend(LLMBackend):
         return {"bull_case": bull_case, "bear_case": bear_case, "red_flags": red_flags, "source": "template (no LLM)"}
 
 
+def _build_prompt(context: dict) -> str:
+    scores = context.get("scores", {})
+    trends = context.get("trends", {})
+    evidence = context.get("evidence", {})
+    lines = [
+        f"You are analyzing {context.get('company_name', context.get('ticker'))} "
+        f"({context.get('ticker')}) using only the figures below, which come from its SEC filings.",
+        "Scores (0-100, already computed numerically):",
+    ]
+    for cat, label in CATEGORY_LABELS.items():
+        lines.append(f"- {label}: {scores.get(cat)}")
+    lines.append(f"- risk: {scores.get('risk_label')} ({scores.get('risk_score')}/100)")
+    lines.append("Trends: " + ", ".join(f"{k}={v}" for k, v in trends.items()))
+    lines.append("Evidence behind the scores:")
+    for cat, items in evidence.items():
+        for item in items:
+            lines.append(f"- [{cat}] {item}")
+    lines.append(
+        "\nWrite a concise, evidence-grounded response with exactly these sections:\n"
+        "Bull case: <2-3 sentences>\nBear case: <2-3 sentences>\nRed flags: <bullet list, or 'None'>"
+    )
+    return "\n".join(lines)
+
+
 class OllamaBackend(LLMBackend):
     """Calls a local Ollama server (https://ollama.com) for richer natural-language analysis."""
 
@@ -82,31 +106,8 @@ class OllamaBackend(LLMBackend):
         self.model = model
         self.host = host.rstrip("/")
 
-    def _build_prompt(self, context: dict) -> str:
-        scores = context.get("scores", {})
-        trends = context.get("trends", {})
-        evidence = context.get("evidence", {})
-        lines = [
-            f"You are analyzing {context.get('company_name', context.get('ticker'))} "
-            f"({context.get('ticker')}) using only the figures below, which come from its SEC filings.",
-            "Scores (0-100, already computed numerically):",
-        ]
-        for cat, label in CATEGORY_LABELS.items():
-            lines.append(f"- {label}: {scores.get(cat)}")
-        lines.append(f"- risk: {scores.get('risk_label')} ({scores.get('risk_score')}/100)")
-        lines.append("Trends: " + ", ".join(f"{k}={v}" for k, v in trends.items()))
-        lines.append("Evidence behind the scores:")
-        for cat, items in evidence.items():
-            for item in items:
-                lines.append(f"- [{cat}] {item}")
-        lines.append(
-            "\nWrite a concise, evidence-grounded response with exactly these sections:\n"
-            "Bull case: <2-3 sentences>\nBear case: <2-3 sentences>\nRed flags: <bullet list, or 'None'>"
-        )
-        return "\n".join(lines)
-
     def generate_analysis(self, context: dict) -> dict:
-        prompt = self._build_prompt(context)
+        prompt = _build_prompt(context)
         resp = requests.post(
             f"{self.host}/api/generate",
             json={"model": self.model, "prompt": prompt, "stream": False},
@@ -135,10 +136,51 @@ class OllamaBackend(LLMBackend):
         return {"bull_case": clean(bull), "bear_case": clean(bear), "red_flags": red_flags}
 
 
+class TogetherBackend(LLMBackend):
+    """Calls the Together AI hosted-inference API (https://api.together.ai) for
+    richer natural-language analysis, without needing a local model server.
+    """
+
+    def __init__(
+        self,
+        model: str = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        api_key: str | None = None,
+    ):
+        self.model = model
+        self.api_key = api_key or os.environ.get("TOGETHER_API_KEY")
+
+    def generate_analysis(self, context: dict) -> dict:
+        if not self.api_key:
+            raise RuntimeError(
+                "Together AI backend requires TOGETHER_API_KEY "
+                "(get one at https://api.together.ai/settings/api-keys)"
+            )
+        prompt = _build_prompt(context)
+        resp = requests.post(
+            "https://api.together.xyz/v1/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 700,
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        text = resp.json()["choices"][0]["message"]["content"]
+        parsed = OllamaBackend._parse(text)
+        parsed["source"] = f"together:{self.model}"
+        return parsed
+
+
 def get_backend(name: str | None = None) -> LLMBackend:
     name = (name or os.environ.get("MCSTOCK_LLM_BACKEND", "stub")).lower()
     if name == "ollama":
         model = os.environ.get("MCSTOCK_OLLAMA_MODEL", "llama3.1")
         host = os.environ.get("MCSTOCK_OLLAMA_HOST", "http://localhost:11434")
         return OllamaBackend(model=model, host=host)
+    if name == "together":
+        model = os.environ.get("MCSTOCK_TOGETHER_MODEL", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo")
+        return TogetherBackend(model=model)
     return StubBackend()

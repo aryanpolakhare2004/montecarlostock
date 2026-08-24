@@ -52,6 +52,7 @@ export function AnalystPage() {
               <option value="">(server default)</option>
               <option value="stub">stub (no LLM)</option>
               <option value="ollama">ollama</option>
+              <option value="together">together</option>
             </select>
           </label>
           <label className="checkbox">
