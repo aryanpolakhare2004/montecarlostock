@@ -158,6 +158,10 @@ class WatchlistAddRequest(BaseModel):
     ticker: str
 
 
+class WatchlistBulkAddRequest(BaseModel):
+    tickers: list[str]
+
+
 class AlertCreateRequest(BaseModel):
     ticker: str
     metric: str
@@ -402,6 +406,25 @@ def api_watchlist_add(req: WatchlistAddRequest) -> dict:
     summary = fundamentals_watchlist.quick_summary(req.ticker)
     db.add_watchlist_ticker(req.ticker)
     return summary
+
+
+@app.post("/api/watchlist/bulk")
+def api_watchlist_bulk_add(req: WatchlistBulkAddRequest) -> dict:
+    added = []
+    errors = {}
+    seen = set()
+    for raw in req.tickers:
+        ticker = raw.strip().upper()
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        try:
+            fundamentals_watchlist.quick_summary(ticker)
+            db.add_watchlist_ticker(ticker)
+            added.append(ticker)
+        except Exception as exc:
+            errors[ticker] = str(exc)
+    return {"added": added, "errors": errors}
 
 
 @app.delete("/api/watchlist/{ticker}")

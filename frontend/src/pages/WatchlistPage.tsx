@@ -5,6 +5,7 @@ import { Sparkline } from '../components/Sparkline';
 import { SubmitButton } from '../components/SubmitButton';
 import { useToast } from '../components/toast';
 import { fmtMoney, fmtPct, fmtScore } from '../format';
+import { parseCsvTickerColumn, parseTickerListText } from '../utils/tickers';
 import type { Alert, WatchlistResponse } from '../types';
 
 const ALERT_POLL_MS = 60_000;
@@ -20,8 +21,11 @@ export function WatchlistPage() {
   const [alertMetric, setAlertMetric] = useState<Alert['metric']>('price');
   const [alertOperator, setAlertOperator] = useState<Alert['operator']>('above');
   const [alertThreshold, setAlertThreshold] = useState('');
+  const [bulkText, setBulkText] = useState('');
+  const [importing, setImporting] = useState(false);
   const seenTriggeredIds = useRef<Set<number>>(new Set());
   const alertsInitialized = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   const load = useCallback(() => {
@@ -70,6 +74,50 @@ export function WatchlistPage() {
       showToast(`Couldn't add ${newTicker.trim().toUpperCase()}: ${error.message}`, 'error');
     } finally {
       setBusy(false);
+    }
+  }
+
+  function onFileSelected(evt: React.ChangeEvent<HTMLInputElement>) {
+    const file = evt.target.files?.[0];
+    evt.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = typeof reader.result === 'string' ? reader.result : '';
+      const csvTickers = parseCsvTickerColumn(content);
+      if (csvTickers.length === 0) {
+        showToast('No tickers found in that file', 'error');
+        return;
+      }
+      setBulkText((prev) => {
+        const existing = prev.trim();
+        return existing ? `${existing}, ${csvTickers.join(', ')}` : csvTickers.join(', ');
+      });
+    };
+    reader.readAsText(file);
+  }
+
+  async function onImport() {
+    const tickerList = parseTickerListText(bulkText);
+    if (tickerList.length === 0) {
+      showToast('No valid tickers found to import', 'error');
+      return;
+    }
+    setImporting(true);
+    try {
+      const response = await api.bulkAddWatchlist(tickerList);
+      setBulkText('');
+      load();
+      const failCount = Object.keys(response.errors).length;
+      const message = failCount > 0
+        ? `Imported ${response.added.length} tickers, ${failCount} failed (${Object.keys(response.errors).join(', ')})`
+        : `Imported ${response.added.length} tickers`;
+      showToast(message, failCount > 0 ? 'info' : 'success');
+    } catch (err) {
+      const error = err instanceof ApiError ? err : new Error(String(err));
+      showToast(`Import failed: ${error.message}`, 'error');
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -133,6 +181,34 @@ export function WatchlistPage() {
         </fieldset>
       </form>
       {addError && <ErrorBox error={addError} />}
+
+      <details className="advanced-fields">
+        <summary>Bulk import (paste or upload CSV)</summary>
+        <div className="advanced-fields-grid bulk-import">
+          <textarea
+            className="bulk-import-textarea"
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            placeholder={'Paste tickers separated by commas or one per line -- CSV works too (first column is used)\nAAPL, MSFT, GOOG'}
+            rows={5}
+          />
+          <div className="bulk-import-actions">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={onFileSelected}
+              style={{ display: 'none' }}
+            />
+            <button type="button" className="refresh-btn" onClick={() => fileInputRef.current?.click()}>
+              Upload CSV
+            </button>
+            <button type="button" className="refresh-btn" onClick={onImport} disabled={importing}>
+              {importing ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+        </div>
+      </details>
 
       <div className="result">
         {loadError && <ErrorBox error={loadError} />}

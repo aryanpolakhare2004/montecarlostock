@@ -14,6 +14,7 @@ import type {
   StrategyRequest, StrategyResponse,
   TerminalRequest, TerminalResponse,
   TrainRequest, TrainResponse,
+  WatchlistBulkAddResponse,
   WatchlistEntry, WatchlistResponse,
 } from './types';
 
@@ -59,6 +60,8 @@ export const api = {
   listModels: () => getJSON<ModelRecord[]>('/api/models'),
   listWatchlist: () => getJSON<WatchlistResponse>('/api/watchlist'),
   addWatchlist: (ticker: string) => postJSON<WatchlistEntry>('/api/watchlist', { ticker }),
+  bulkAddWatchlist: (tickers: string[]) =>
+    postJSON<WatchlistBulkAddResponse>('/api/watchlist/bulk', { tickers }),
   removeWatchlist: (ticker: string) =>
     fetch(`/api/watchlist/${encodeURIComponent(ticker)}`, { method: 'DELETE' }).then((r) => handle<{ removed: string }>(r)),
   listAlerts: () => getJSON<Alert[]>('/api/alerts'),

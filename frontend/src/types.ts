@@ -303,6 +303,15 @@ export interface WatchlistResponse {
   errors: Record<string, string>;
 }
 
+export interface WatchlistBulkAddRequest {
+  tickers: string[];
+}
+
+export interface WatchlistBulkAddResponse {
+  added: string[];
+  errors: Record<string, string>;
+}
+
 // ---- Sentiment ----
 
 export interface SentimentRequest {
