@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mcstock.portfolio import portfolio_gbm_paths, summarize_portfolio
+from mcstock.portfolio import optimize_weights, portfolio_gbm_paths, summarize_portfolio
 
 
 def _synthetic_prices(seed=0, n=500):
@@ -32,3 +32,30 @@ def test_summarize_portfolio_keys():
     paths = portfolio_gbm_paths(prices, weights=[0.5, 0.5], days=20, n_sims=200, initial_value=1000.0, seed=3)
     summary = summarize_portfolio(paths)
     assert set(summary) == {"mean", "median", "std", "p05", "p95", "prob_loss"}
+
+
+@pytest.mark.parametrize("objective", ["max_sharpe", "min_variance"])
+def test_optimize_weights_sums_to_one_and_nonnegative(objective):
+    prices = _synthetic_prices()
+    result = optimize_weights(prices, objective=objective)
+    weights = result["weights"]
+    assert abs(weights.sum() - 1.0) < 1e-6
+    assert (weights >= -1e-9).all()
+    assert result["expected_volatility"] >= 0
+
+
+def test_optimize_min_variance_beats_equal_weight():
+    prices = _synthetic_prices()
+    log_rets = np.log(prices / prices.shift(1)).dropna()
+    cov = log_rets.cov().to_numpy() * 252
+    equal_weights = np.full(prices.shape[1], 1.0 / prices.shape[1])
+    equal_vol = np.sqrt(equal_weights @ cov @ equal_weights)
+
+    result = optimize_weights(prices, objective="min_variance")
+    assert result["expected_volatility"] <= equal_vol + 1e-9
+
+
+def test_optimize_unknown_objective_raises():
+    prices = _synthetic_prices()
+    with pytest.raises(ValueError):
+        optimize_weights(prices, objective="bogus")

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from mcstock.strategies.buy_and_hold import BuyAndHold
+from mcstock.strategies.mean_reversion import MeanReversion
 from mcstock.strategies.moving_average import MovingAverageCrossover
 
 
@@ -23,3 +24,28 @@ def test_moving_average_crossover_signals():
 def test_fast_must_be_smaller_than_slow():
     with pytest.raises(ValueError):
         MovingAverageCrossover(fast=10, slow=5)
+
+
+def test_mean_reversion_output_shape_and_range():
+    rng = np.random.default_rng(0)
+    prices = 100 + np.cumsum(rng.standard_normal(300))
+    prices = np.abs(prices) + 1
+    positions = MeanReversion().positions(prices)
+    assert len(positions) == len(prices) - 1
+    assert set(np.unique(positions)) <= {0.0, 1.0}
+
+
+def test_mean_reversion_oversold_must_be_below_overbought():
+    with pytest.raises(ValueError):
+        MeanReversion(oversold=70, overbought=30)
+
+
+def test_mean_reversion_rsi_period_must_be_positive():
+    with pytest.raises(ValueError):
+        MeanReversion(rsi_period=0)
+
+
+def test_mean_reversion_short_price_array_stays_flat():
+    prices = np.array([100.0, 101.0, 99.0])
+    positions = MeanReversion(rsi_period=14).positions(prices)
+    assert np.array_equal(positions, np.zeros(len(prices) - 1))

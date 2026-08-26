@@ -87,3 +87,32 @@ def test_watchlist_add_is_idempotent(temp_db):
 def test_watchlist_remove_missing_is_noop(temp_db):
     temp_db.remove_watchlist_ticker("NOPE")
     assert temp_db.list_watchlist_tickers() == []
+
+
+def test_alert_add_list_remove(temp_db):
+    alert_id = temp_db.add_alert("aapl", "price", "above", 150.0)
+    alerts = temp_db.list_alerts()
+    assert len(alerts) == 1
+    assert alerts[0]["id"] == alert_id
+    assert alerts[0]["ticker"] == "AAPL"
+    assert alerts[0]["triggered_at"] is None
+
+    temp_db.remove_alert(alert_id)
+    assert temp_db.list_alerts() == []
+
+
+def test_pending_alerts_excludes_triggered(temp_db):
+    pending_id = temp_db.add_alert("AAPL", "price", "above", 150.0)
+    triggered_id = temp_db.add_alert("MSFT", "price", "below", 50.0)
+    temp_db.mark_alert_triggered(triggered_id)
+
+    pending = temp_db.list_pending_alerts()
+    assert [a["id"] for a in pending] == [pending_id]
+    assert len(temp_db.list_alerts()) == 2
+
+
+def test_mark_alert_triggered_sets_timestamp(temp_db):
+    alert_id = temp_db.add_alert("AAPL", "volatility", "above", 0.3)
+    temp_db.mark_alert_triggered(alert_id)
+    alert = next(a for a in temp_db.list_alerts() if a["id"] == alert_id)
+    assert alert["triggered_at"] is not None
