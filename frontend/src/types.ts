@@ -312,6 +312,28 @@ export interface WatchlistBulkAddResponse {
   errors: Record<string, string>;
 }
 
+// ---- Commodities ----
+
+export interface Commodity {
+  symbol: string;
+  name: string;
+}
+
+export interface CommodityQuote extends Commodity {
+  last_price: number;
+  day_change_pct: number | null;
+  sparkline: number[];
+}
+
+export interface CommoditiesListResponse {
+  commodities: Commodity[];
+}
+
+export interface CommoditiesQuotesResponse {
+  quotes: CommodityQuote[];
+  errors: Record<string, string>;
+}
+
 // ---- Sentiment ----
 
 export interface SentimentRequest {

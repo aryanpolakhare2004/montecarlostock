@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import data, gbm, plotting, stats
+from .. import commodities, data, gbm, plotting, stats
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
@@ -384,6 +384,25 @@ def api_sentiment(req: SentimentRequest) -> dict:
         "items": scored[:50],
         "daily": [{"date": str(idx.date()), **row} for idx, row in daily.iterrows()],
     }
+
+
+# ---- commodities endpoints ----
+
+@app.get("/api/commodities")
+def api_commodities_list() -> dict:
+    return {"commodities": commodities.COMMODITIES}
+
+
+@app.get("/api/commodities/quotes")
+def api_commodities_quotes() -> dict:
+    quotes = []
+    errors = {}
+    for entry in commodities.COMMODITIES:
+        try:
+            quotes.append({**commodities.quick_quote(entry["symbol"]), "name": entry["name"]})
+        except Exception as exc:
+            errors[entry["symbol"]] = str(exc)
+    return {"quotes": quotes, "errors": errors}
 
 
 # ---- watchlist endpoints ----

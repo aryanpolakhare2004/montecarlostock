@@ -68,6 +68,36 @@ def test_portfolio_weights_mismatch_is_400(client):
     assert resp.status_code == 400
 
 
+# ---- commodities ----
+
+def test_commodities_list(client):
+    resp = client.get("/api/commodities")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["commodities"]) > 0
+    assert {"symbol", "name"} == set(body["commodities"][0])
+
+
+def test_commodities_quotes_partial_success(client, monkeypatch):
+    def fake_quick_quote(symbol):
+        if symbol == "NG=F":
+            raise ValueError(f"No price data returned for ticker '{symbol}'")
+        return {"symbol": symbol, "last_price": 100.0, "day_change_pct": 0.01, "sparkline": [99.0, 100.0]}
+
+    monkeypatch.setattr(app_module.commodities, "quick_quote", fake_quick_quote)
+
+    resp = client.get("/api/commodities/quotes")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "NG=F" in body["errors"]
+    quoted_symbols = {q["symbol"] for q in body["quotes"]}
+    assert "NG=F" not in quoted_symbols
+    assert "GC=F" in quoted_symbols
+    # names from the curated list are merged into each quote
+    gold = next(q for q in body["quotes"] if q["symbol"] == "GC=F")
+    assert gold["name"] == "Gold"
+
+
 # ---- sentiment ----
 
 def test_sentiment_unknown_source_group_is_400(client):

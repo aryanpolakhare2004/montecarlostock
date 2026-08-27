@@ -580,6 +580,44 @@ ul.evidence {
   vertical-align: middle;
 }
 
+.watchlist-table tbody tr:hover {
+  background: var(--panel-raised);
+}
+
+.watchlist-table tbody tr.selected-row {
+  background: var(--panel-raised);
+  outline: 1px solid var(--accent);
+}
+
+.commodity-select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 1.25rem 0 0.5rem;
+  max-width: 320px;
+}
+
+.commodity-select-label select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.95rem;
+}
+
+.commodity-block {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.commodity-block h3 {
+  margin-bottom: 0.75rem;
+}
+
 .terminal {
   background: #0b0c0e;
   border: 1px solid var(--border);

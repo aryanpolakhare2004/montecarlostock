@@ -1,6 +1,7 @@
 import type {
   Alert, AlertCreateRequest,
   BacktestMlRequest, BacktestMlResponse,
+  CommoditiesListResponse, CommoditiesQuotesResponse,
   CompareRequest, CompareResponse,
   FundamentalsCompareRequest, FundamentalsCompareResponse,
   FundamentalsRequest, FundamentalsReport,
@@ -56,6 +57,8 @@ export const api = {
   fundamentalsCompare: (req: FundamentalsCompareRequest) =>
     postJSON<FundamentalsCompareResponse>('/api/fundamentals/compare', req),
   sentiment: (req: SentimentRequest) => postJSON<SentimentResponse>('/api/sentiment', req),
+  listCommodities: () => getJSON<CommoditiesListResponse>('/api/commodities'),
+  commodityQuotes: () => getJSON<CommoditiesQuotesResponse>('/api/commodities/quotes'),
   listRuns: (limit = 50) => getJSON<RunRecord[]>(`/api/runs?limit=${limit}`),
   listModels: () => getJSON<ModelRecord[]>('/api/models'),
   listWatchlist: () => getJSON<WatchlistResponse>('/api/watchlist'),
