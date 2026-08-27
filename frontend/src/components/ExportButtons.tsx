@@ -10,7 +10,7 @@ interface ExportButtonsProps<T extends object> {
 }
 
 export function ExportButtons<T extends object>({ runId, csvFilename, csvRows }: ExportButtonsProps<T>) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'png' | 'pdf' | null>(null);
   const { showToast } = useToast();
 
   function onCsv() {
@@ -21,17 +21,17 @@ export function ExportButtons<T extends object>({ runId, csvFilename, csvRows }:
     }
   }
 
-  async function onPng() {
-    setBusy(true);
+  async function onDownload(kind: 'png' | 'pdf') {
+    setBusy(kind);
     try {
-      const resp = await fetch(`/api/runs/${runId}/chart`);
+      const resp = await fetch(`/api/runs/${runId}/${kind}`);
       if (!resp.ok) throw new Error(`request failed (${resp.status})`);
       const blob = await resp.blob();
-      downloadBlob(`run-${runId}.png`, blob, 'image/png');
+      downloadBlob(`run-${runId}.${kind}`, blob, kind === 'png' ? 'image/png' : 'application/pdf');
     } catch (err) {
-      showToast(`PNG export failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
+      showToast(`${kind.toUpperCase()} export failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -40,8 +40,11 @@ export function ExportButtons<T extends object>({ runId, csvFilename, csvRows }:
       <button type="button" onClick={onCsv} disabled={csvRows.length === 0}>
         <DownloadIcon size={14} /> CSV
       </button>
-      <button type="button" onClick={onPng} disabled={busy}>
+      <button type="button" onClick={() => onDownload('png')} disabled={busy !== null}>
         <DownloadIcon size={14} /> PNG
+      </button>
+      <button type="button" onClick={() => onDownload('pdf')} disabled={busy !== null}>
+        <DownloadIcon size={14} /> PDF
       </button>
     </div>
   );

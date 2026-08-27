@@ -1,12 +1,12 @@
 """FastAPI web frontend for mcstock: full CLI parity plus SQLite-backed run/model history."""
 from __future__ import annotations
 
-import asyncio
 import base64
 import os
 from pathlib import Path
 from typing import Optional
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +27,7 @@ from ..strategies.buy_and_hold import BuyAndHold
 from ..strategies.mean_reversion import MeanReversion
 from ..strategies.ml_classifier import MLClassifierStrategy
 from ..strategies.moving_average import MovingAverageCrossover
-from . import db, terminal
+from . import db, pdf_report, terminal
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -551,6 +551,14 @@ def api_run_chart(run_id: int) -> Response:
     return Response(content=record["chart_png"], media_type="image/png")
 
 
+@app.get("/api/runs/{run_id}/pdf")
+def api_run_pdf(run_id: int) -> Response:
+    record = db.get_run(run_id)
+    if record is None:
+        raise HTTPException(404, "run not found")
+    return Response(content=pdf_report.build_run_pdf(record), media_type="application/pdf")
+
+
 @app.get("/api/models")
 def api_list_models() -> list[dict]:
     return db.list_models()
@@ -573,17 +581,27 @@ def _alert_condition_met(alert: dict) -> bool:
     return value <= alert["threshold"]
 
 
-async def _alert_check_loop() -> None:
-    while True:
-        await asyncio.sleep(ALERT_CHECK_INTERVAL_SECONDS)
-        for alert in db.list_pending_alerts():
-            try:
-                if _alert_condition_met(alert):
-                    db.mark_alert_triggered(alert["id"])
-            except Exception:
-                continue
+def _check_alerts() -> None:
+    for alert in db.list_pending_alerts():
+        try:
+            if _alert_condition_met(alert):
+                db.mark_alert_triggered(alert["id"])
+        except Exception:
+            continue
+
+
+scheduler = AsyncIOScheduler()
 
 
 @app.on_event("startup")
 async def _launch_alert_checker() -> None:
-    asyncio.create_task(_alert_check_loop())
+    scheduler.add_job(
+        _check_alerts, "interval", seconds=ALERT_CHECK_INTERVAL_SECONDS,
+        id="alert_checker", replace_existing=True,
+    )
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+async def _stop_alert_checker() -> None:
+    scheduler.shutdown(wait=False)
