@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import commodities, crypto, data, gbm, plotting, stats
+from .. import commodities, crypto, data, forex, gbm, plotting, stats
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
@@ -27,7 +27,7 @@ from ..strategies.buy_and_hold import BuyAndHold
 from ..strategies.mean_reversion import MeanReversion
 from ..strategies.ml_classifier import MLClassifierStrategy
 from ..strategies.moving_average import MovingAverageCrossover
-from . import db, pdf_report, terminal
+from . import db, notifications, pdf_report, terminal
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -438,6 +438,25 @@ def api_crypto_quotes() -> dict:
     return {"quotes": quotes, "errors": errors}
 
 
+# ---- forex endpoints ----
+
+@app.get("/api/forex")
+def api_forex_list() -> dict:
+    return {"forex": forex.FOREX_PAIRS}
+
+
+@app.get("/api/forex/quotes")
+def api_forex_quotes() -> dict:
+    quotes = []
+    errors = {}
+    for entry in forex.FOREX_PAIRS:
+        try:
+            quotes.append({**forex.quick_quote(entry["symbol"]), "name": entry["name"]})
+        except Exception as exc:
+            errors[entry["symbol"]] = str(exc)
+    return {"quotes": quotes, "errors": errors}
+
+
 # ---- watchlist endpoints ----
 
 @app.get("/api/watchlist")
@@ -638,6 +657,7 @@ def _check_alerts() -> None:
         try:
             if _alert_condition_met(alert):
                 db.mark_alert_triggered(alert["id"])
+                notifications.notify_alert_triggered(alert)
         except Exception:
             continue
 

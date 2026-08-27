@@ -322,7 +322,7 @@ export interface WatchlistBulkAddResponse {
   errors: Record<string, string>;
 }
 
-// ---- Market assets (commodities / crypto) ----
+// ---- Market assets (commodities / crypto / forex) ----
 
 export interface MarketAsset {
   symbol: string;
@@ -353,6 +353,17 @@ export interface CryptoListResponse {
 }
 
 export interface CryptoQuotesResponse {
+  quotes: MarketAssetQuote[];
+  errors: Record<string, string>;
+}
+
+// ---- Forex ----
+
+export interface ForexListResponse {
+  forex: MarketAsset[];
+}
+
+export interface ForexQuotesResponse {
   quotes: MarketAssetQuote[];
   errors: Record<string, string>;
 }

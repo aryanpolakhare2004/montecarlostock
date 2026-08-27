@@ -127,6 +127,35 @@ def test_crypto_quotes_partial_success(client, monkeypatch):
     assert bitcoin["name"] == "Bitcoin"
 
 
+# ---- forex ----
+
+def test_forex_list(client):
+    resp = client.get("/api/forex")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["forex"]) > 0
+    assert {"symbol", "name"} == set(body["forex"][0])
+
+
+def test_forex_quotes_partial_success(client, monkeypatch):
+    def fake_quick_quote(symbol):
+        if symbol == "GBPJPY=X":
+            raise ValueError(f"No price data returned for ticker '{symbol}'")
+        return {"symbol": symbol, "last_price": 1.1, "day_change_pct": 0.01, "sparkline": [1.09, 1.1]}
+
+    monkeypatch.setattr(app_module.forex, "quick_quote", fake_quick_quote)
+
+    resp = client.get("/api/forex/quotes")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "GBPJPY=X" in body["errors"]
+    quoted_symbols = {q["symbol"] for q in body["quotes"]}
+    assert "GBPJPY=X" not in quoted_symbols
+    assert "EURUSD=X" in quoted_symbols
+    eurusd = next(q for q in body["quotes"] if q["symbol"] == "EURUSD=X")
+    assert eurusd["name"] == "EUR/USD"
+
+
 # ---- sentiment ----
 
 def test_sentiment_unknown_source_group_is_400(client):
