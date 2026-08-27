@@ -6,19 +6,19 @@ import { AssetSimulate } from '../components/AssetSimulate';
 import { AssetBacktest } from '../components/AssetBacktest';
 import type { MarketAsset, MarketAssetQuote } from '../types';
 
-export function CommoditiesPage() {
-  const [commodityList, setCommodityList] = useState<MarketAsset[] | null>(null);
+export function CryptoPage() {
+  const [cryptoList, setCryptoList] = useState<MarketAsset[] | null>(null);
   const [quotes, setQuotes] = useState<MarketAssetQuote[] | null>(null);
   const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
   const [loadError, setLoadError] = useState<Error | null>(null);
   const [symbol, setSymbol] = useState('');
 
   useEffect(() => {
-    api.listCommodities().then((r) => {
-      setCommodityList(r.commodities);
-      if (r.commodities.length > 0) setSymbol(r.commodities[0].symbol);
+    api.listCrypto().then((r) => {
+      setCryptoList(r.crypto);
+      if (r.crypto.length > 0) setSymbol(r.crypto[0].symbol);
     }).catch(setLoadError);
-    api.commodityQuotes().then((r) => {
+    api.cryptoQuotes().then((r) => {
       setQuotes(r.quotes);
       setQuoteErrors(r.errors);
     }).catch(setLoadError);
@@ -26,10 +26,10 @@ export function CommoditiesPage() {
 
   return (
     <section>
-      <h2>Commodities</h2>
+      <h2>Crypto</h2>
       <p className="hint">
-        A curated set of commodity futures (metals, energy, agriculture) via the same Monte Carlo price simulation
-        and strategy backtest used for stocks. No fundamentals data here -- futures don't have SEC filings.
+        A curated set of cryptocurrencies via the same Monte Carlo price simulation and strategy backtest used for
+        stocks. No fundamentals data here -- these aren't companies.
       </p>
 
       {loadError && <ErrorBox error={loadError} />}
@@ -38,12 +38,12 @@ export function CommoditiesPage() {
         <MarketOverviewTable quotes={quotes} errors={quoteErrors} selectedSymbol={symbol} onSelect={setSymbol} />
       )}
 
-      {commodityList && commodityList.length > 0 && (
+      {cryptoList && cryptoList.length > 0 && (
         <>
           <label className="commodity-select-label">
-            Commodity
+            Crypto asset
             <select value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-              {commodityList.map((c) => (
+              {cryptoList.map((c) => (
                 <option key={c.symbol} value={c.symbol}>{c.name} ({c.symbol})</option>
               ))}
             </select>

@@ -618,6 +618,28 @@ ul.evidence {
   margin-bottom: 0.75rem;
 }
 
+.corr-table {
+  margin-top: 1.25rem;
+}
+
+.corr-table th, .corr-table td {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.corr-table thead th:first-child, .corr-table tbody th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.corr-strong-neg { background: color-mix(in srgb, var(--good) 55%, transparent); }
+.corr-weak-neg { background: color-mix(in srgb, var(--good) 25%, transparent); }
+.corr-neutral { background: transparent; }
+.corr-weak-pos { background: color-mix(in srgb, var(--bad) 25%, transparent); }
+.corr-strong-pos { background: color-mix(in srgb, var(--bad) 55%, transparent); }
+.corr-diagonal { color: var(--muted); background: var(--panel); }
+
 .terminal {
   background: #0b0c0e;
   border: 1px solid var(--border);

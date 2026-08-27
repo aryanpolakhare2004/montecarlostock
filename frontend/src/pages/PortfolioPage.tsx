@@ -7,7 +7,15 @@ import { SubmitButton } from '../components/SubmitButton';
 import { useToast } from '../components/toast';
 import { FanChart } from '../components/charts/FanChart';
 import { fmtPct } from '../format';
-import type { PortfolioOptimizeRequest, PortfolioResponse } from '../types';
+import type { PortfolioCorrelationResponse, PortfolioOptimizeRequest, PortfolioResponse } from '../types';
+
+function corrClass(v: number): string {
+  if (v <= -0.5) return 'corr-strong-neg';
+  if (v <= -0.1) return 'corr-weak-neg';
+  if (v < 0.1) return 'corr-neutral';
+  if (v < 0.5) return 'corr-weak-pos';
+  return 'corr-strong-pos';
+}
 
 export function PortfolioPage() {
   const [tickers, setTickers] = useState('AAPL,MSFT,GOOG');
@@ -15,6 +23,8 @@ export function PortfolioPage() {
   const [objective, setObjective] = useState<PortfolioOptimizeRequest['objective']>('max_sharpe');
   const [riskFreeRate, setRiskFreeRate] = useState(0);
   const [optimizing, setOptimizing] = useState(false);
+  const [correlating, setCorrelating] = useState(false);
+  const [correlation, setCorrelation] = useState<PortfolioCorrelationResponse | null>(null);
   const [value, setValue] = useState(10000);
   const [period, setPeriod] = useState('5y');
   const [days, setDays] = useState(252);
@@ -55,6 +65,24 @@ export function PortfolioPage() {
       showToast(`Optimization failed: ${errorObj.message}`, 'error');
     } finally {
       setOptimizing(false);
+    }
+  }
+
+  async function onCorrelate() {
+    const tickerList = parsedTickers();
+    if (tickerList.length < 2) {
+      showToast('Enter at least two tickers to show correlation', 'error');
+      return;
+    }
+    setCorrelating(true);
+    try {
+      const response = await api.portfolioCorrelation({ tickers: tickerList, period });
+      setCorrelation(response);
+    } catch (err) {
+      const errorObj = err instanceof ApiError ? err : new Error(String(err));
+      showToast(`Correlation failed: ${errorObj.message}`, 'error');
+    } finally {
+      setCorrelating(false);
     }
   }
 
@@ -118,6 +146,9 @@ export function PortfolioPage() {
           <button type="button" className="refresh-btn" onClick={onOptimize} disabled={optimizing}>
             {optimizing ? 'Optimizing…' : 'Optimize weights'}
           </button>
+          <button type="button" className="refresh-btn" onClick={onCorrelate} disabled={correlating}>
+            {correlating ? 'Loading…' : 'Show correlation'}
+          </button>
           <label>
             Starting value
             <input type="number" min={0} value={value} onChange={(e) => setValue(Number(e.target.value))} />
@@ -146,6 +177,27 @@ export function PortfolioPage() {
           <SubmitButton busy={busy}>Run</SubmitButton>
         </fieldset>
       </form>
+      {correlation && (
+        <div className="table-scroll">
+          <table className="data-table corr-table">
+            <thead>
+              <tr><th></th>{correlation.tickers.map((t) => <th key={t}>{t}</th>)}</tr>
+            </thead>
+            <tbody>
+              {correlation.tickers.map((rowTicker, i) => (
+                <tr key={rowTicker}>
+                  <th>{rowTicker}</th>
+                  {correlation.tickers.map((colTicker, j) => (
+                    <td key={colTicker} className={i === j ? 'corr-diagonal' : corrClass(correlation.matrix[i][j])}>
+                      {correlation.matrix[i][j].toFixed(2)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className="result">
         {error && <ErrorBox error={error} />}
         {result && (

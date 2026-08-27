@@ -132,6 +132,16 @@ export interface PortfolioOptimizeResponse {
   sharpe_ratio: number | null;
 }
 
+export interface PortfolioCorrelationRequest {
+  tickers: string[];
+  period?: string;
+}
+
+export interface PortfolioCorrelationResponse {
+  tickers: string[];
+  matrix: number[][];
+}
+
 // ---- Train / Predict / Backtest ML ----
 
 export interface TrainRequest {
@@ -312,25 +322,38 @@ export interface WatchlistBulkAddResponse {
   errors: Record<string, string>;
 }
 
-// ---- Commodities ----
+// ---- Market assets (commodities / crypto) ----
 
-export interface Commodity {
+export interface MarketAsset {
   symbol: string;
   name: string;
 }
 
-export interface CommodityQuote extends Commodity {
+export interface MarketAssetQuote extends MarketAsset {
   last_price: number;
   day_change_pct: number | null;
   sparkline: number[];
 }
 
+// ---- Commodities ----
+
 export interface CommoditiesListResponse {
-  commodities: Commodity[];
+  commodities: MarketAsset[];
 }
 
 export interface CommoditiesQuotesResponse {
-  quotes: CommodityQuote[];
+  quotes: MarketAssetQuote[];
+  errors: Record<string, string>;
+}
+
+// ---- Crypto ----
+
+export interface CryptoListResponse {
+  crypto: MarketAsset[];
+}
+
+export interface CryptoQuotesResponse {
+  quotes: MarketAssetQuote[];
   errors: Record<string, string>;
 }
 

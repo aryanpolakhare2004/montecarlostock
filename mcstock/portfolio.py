@@ -65,6 +65,11 @@ def summarize_portfolio(paths: np.ndarray) -> dict:
     return summary
 
 
+def correlation_matrix(prices: pd.DataFrame) -> pd.DataFrame:
+    """Correlation of daily log returns between assets, one row/column per ticker."""
+    return np.log(prices / prices.shift(1)).dropna().corr()
+
+
 def optimize_weights(
     prices: pd.DataFrame,
     objective: str = "max_sharpe",

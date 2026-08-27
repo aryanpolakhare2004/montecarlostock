@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import commodities, data, gbm, plotting, stats
+from .. import commodities, crypto, data, gbm, plotting, stats
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
@@ -20,7 +20,7 @@ from ..fundamentals import watchlist as fundamentals_watchlist
 from ..historical_backtest import realized_daily_returns, resample_return_series, summarize_equity
 from ..ml.dataset import build_dataset, build_latest_features
 from ..ml.models import load_bundle, predict_proba_up, save_bundle, train_classifier
-from ..portfolio import optimize_weights, portfolio_gbm_paths, summarize_portfolio
+from ..portfolio import correlation_matrix, optimize_weights, portfolio_gbm_paths, summarize_portfolio
 from ..sentiment import news_sources as sentiment_news
 from ..sentiment import scorer as sentiment_scorer
 from ..strategies.buy_and_hold import BuyAndHold
@@ -104,6 +104,11 @@ class PortfolioOptimizeRequest(BaseModel):
     period: str = "5y"
     objective: str = "max_sharpe"
     risk_free_rate: float = 0.0
+
+
+class PortfolioCorrelationRequest(BaseModel):
+    tickers: list[str]
+    period: str = "5y"
 
 
 class TrainRequest(BaseModel):
@@ -321,6 +326,15 @@ def api_portfolio_optimize(req: PortfolioOptimizeRequest) -> dict:
     }
 
 
+@app.post("/api/portfolio/correlation")
+def api_portfolio_correlation(req: PortfolioCorrelationRequest) -> dict:
+    if not req.tickers:
+        raise HTTPException(400, "at least one ticker is required")
+    prices = data.download_close_prices(req.tickers, period=req.period)
+    corr = correlation_matrix(prices)
+    return {"tickers": list(corr.columns), "matrix": corr.to_numpy().tolist()}
+
+
 # ---- fundamentals (investment analyst) endpoints ----
 
 @app.post("/api/fundamentals")
@@ -400,6 +414,25 @@ def api_commodities_quotes() -> dict:
     for entry in commodities.COMMODITIES:
         try:
             quotes.append({**commodities.quick_quote(entry["symbol"]), "name": entry["name"]})
+        except Exception as exc:
+            errors[entry["symbol"]] = str(exc)
+    return {"quotes": quotes, "errors": errors}
+
+
+# ---- crypto endpoints ----
+
+@app.get("/api/crypto")
+def api_crypto_list() -> dict:
+    return {"crypto": crypto.CRYPTOCURRENCIES}
+
+
+@app.get("/api/crypto/quotes")
+def api_crypto_quotes() -> dict:
+    quotes = []
+    errors = {}
+    for entry in crypto.CRYPTOCURRENCIES:
+        try:
+            quotes.append({**crypto.quick_quote(entry["symbol"]), "name": entry["name"]})
         except Exception as exc:
             errors[entry["symbol"]] = str(exc)
     return {"quotes": quotes, "errors": errors}

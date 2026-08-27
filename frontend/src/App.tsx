@@ -13,6 +13,7 @@ import { AnalystPage } from './pages/AnalystPage';
 import { AnalystComparePage } from './pages/AnalystComparePage';
 import { SentimentPage } from './pages/SentimentPage';
 import { CommoditiesPage } from './pages/CommoditiesPage';
+import { CryptoPage } from './pages/CryptoPage';
 import { WatchlistPage } from './pages/WatchlistPage';
 import { TerminalPage } from './pages/TerminalPage';
 import { HistoryPage } from './pages/HistoryPage';
@@ -35,6 +36,7 @@ const NAV_GROUPS = [
       { id: 'compare', label: 'Compare', icon: ScaleIcon },
       { id: 'portfolio', label: 'Portfolio', icon: BriefcaseIcon },
       { id: 'commodities', label: 'Commodities', icon: LayersIcon },
+      { id: 'crypto', label: 'Crypto', icon: ActivityIcon },
     ],
   },
   {
@@ -128,6 +130,7 @@ function AppShell() {
         {pane('compare', <ComparePage modelOptions={modelOptions} />)}
         {pane('portfolio', <PortfolioPage />)}
         {pane('commodities', <CommoditiesPage />)}
+        {pane('crypto', <CryptoPage />)}
         {pane('train', <TrainPage onTrained={modelOptions.reload} />)}
         {pane('predict', <PredictPage modelOptions={modelOptions} />)}
         {pane('backtest_ml', <BacktestMlPage modelOptions={modelOptions} />)}

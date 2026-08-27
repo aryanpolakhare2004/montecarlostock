@@ -98,6 +98,35 @@ def test_commodities_quotes_partial_success(client, monkeypatch):
     assert gold["name"] == "Gold"
 
 
+# ---- crypto ----
+
+def test_crypto_list(client):
+    resp = client.get("/api/crypto")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["crypto"]) > 0
+    assert {"symbol", "name"} == set(body["crypto"][0])
+
+
+def test_crypto_quotes_partial_success(client, monkeypatch):
+    def fake_quick_quote(symbol):
+        if symbol == "DOGE-USD":
+            raise ValueError(f"No price data returned for ticker '{symbol}'")
+        return {"symbol": symbol, "last_price": 100.0, "day_change_pct": 0.01, "sparkline": [99.0, 100.0]}
+
+    monkeypatch.setattr(app_module.crypto, "quick_quote", fake_quick_quote)
+
+    resp = client.get("/api/crypto/quotes")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "DOGE-USD" in body["errors"]
+    quoted_symbols = {q["symbol"] for q in body["quotes"]}
+    assert "DOGE-USD" not in quoted_symbols
+    assert "BTC-USD" in quoted_symbols
+    bitcoin = next(q for q in body["quotes"] if q["symbol"] == "BTC-USD")
+    assert bitcoin["name"] == "Bitcoin"
+
+
 # ---- sentiment ----
 
 def test_sentiment_unknown_source_group_is_400(client):
@@ -171,6 +200,32 @@ def test_portfolio_optimize_returns_weights(client, monkeypatch):
     assert set(body["weights"]) == {"AAPL", "MSFT"}
     assert abs(sum(body["weights"].values()) - 1.0) < 1e-6
     assert all(w >= -1e-9 for w in body["weights"].values())
+
+
+# ---- portfolio correlation ----
+
+def test_portfolio_correlation_empty_tickers_is_400(client):
+    resp = client.post("/api/portfolio/correlation", json={"tickers": []})
+    assert resp.status_code == 400
+
+
+def test_portfolio_correlation_returns_matrix(client, monkeypatch):
+    rng = np.random.default_rng(1)
+    n = 300
+    prices = pd.DataFrame({
+        "AAPL": 100 * np.exp(np.cumsum(rng.normal(0.0004, 0.01, n))),
+        "MSFT": 100 * np.exp(np.cumsum(rng.normal(0.0003, 0.012, n))),
+    })
+    monkeypatch.setattr(app_module.data, "download_close_prices", lambda tickers, period="5y": prices)
+
+    resp = client.post("/api/portfolio/correlation", json={"tickers": ["AAPL", "MSFT"]})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["tickers"] == ["AAPL", "MSFT"]
+    matrix = body["matrix"]
+    assert abs(matrix[0][0] - 1.0) < 1e-9
+    assert abs(matrix[1][1] - 1.0) < 1e-9
+    assert abs(matrix[0][1] - matrix[1][0]) < 1e-9
 
 
 # ---- watchlist bulk import ----

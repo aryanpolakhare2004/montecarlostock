@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mcstock.portfolio import optimize_weights, portfolio_gbm_paths, summarize_portfolio
+from mcstock.portfolio import correlation_matrix, optimize_weights, portfolio_gbm_paths, summarize_portfolio
 
 
 def _synthetic_prices(seed=0, n=500):
@@ -59,3 +59,13 @@ def test_optimize_unknown_objective_raises():
     prices = _synthetic_prices()
     with pytest.raises(ValueError):
         optimize_weights(prices, objective="bogus")
+
+
+def test_correlation_matrix_diagonal_is_one_and_symmetric():
+    prices = _synthetic_prices()
+    corr = correlation_matrix(prices)
+    assert list(corr.columns) == ["A", "B"]
+    assert abs(corr.loc["A", "A"] - 1.0) < 1e-9
+    assert abs(corr.loc["B", "B"] - 1.0) < 1e-9
+    assert abs(corr.loc["A", "B"] - corr.loc["B", "A"]) < 1e-9
+    assert -1.0 <= corr.loc["A", "B"] <= 1.0
