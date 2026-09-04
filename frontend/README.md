@@ -1,32 +1,27 @@
-# React + TypeScript + Vite
+# Vue 3 + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+mcstock's web dashboard frontend: Vue 3 (Composition API, `<script setup>`
+SFCs), TypeScript, and Vite. Charts are rendered with Chart.js via
+`vue-chartjs`. No router -- navigation is a single in-app tab state
+(`src/navigation.ts`), with visited tabs kept mounted via a lazy-mount +
+`v-show`-style pattern so form state and results survive switching tabs.
 
-Currently, two official plugins are available:
+## Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `src/pages/*.vue` -- one component per sidebar tab
+- `src/components/*.vue` -- shared UI (buttons, tables, the asset
+  simulate/backtest forms reused by Commodities/Crypto/Forex, etc.)
+- `src/components/charts/*.vue` -- Chart.js wrappers (fan/band chart,
+  histogram, categorical bar chart, fundamentals trend line chart)
+- `src/composables/*.ts` -- shared reactive state (`useModels`, `useTheme`,
+  `useToast`, `useThemeVersion` for re-theming charts on light/dark toggle)
+- `src/api.ts`, `src/types.ts`, `src/format.ts`, `src/utils/*.ts` -- plain
+  TypeScript, no framework dependency
 
-## React Compiler
+## Scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+- `npm run dev` -- Vite dev server (proxies `/api` to the FastAPI backend
+  on `127.0.0.1:8000`)
+- `npm run build` -- type-checks with `vue-tsc` then builds into
+  `../mcstock/web/static/` (the path the FastAPI backend serves at `/`)
+- `npm run lint` -- oxlint

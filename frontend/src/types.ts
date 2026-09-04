@@ -335,6 +335,37 @@ export interface MarketAssetQuote extends MarketAsset {
   sparkline: number[];
 }
 
+// ---- Equities ----
+
+export interface EquitiesListResponse {
+  equities: MarketAsset[];
+}
+
+export interface EquitiesQuotesResponse {
+  quotes: MarketAssetQuote[];
+  errors: Record<string, string>;
+}
+
+export interface EquitySuggestion {
+  symbol: string;
+  name: string;
+  s0: number;
+  mu: number;
+  sigma: number;
+  expected_return_pct: number;
+  prob_above_start: number;
+  median: number;
+  p05: number;
+  p95: number;
+}
+
+export interface EquitySuggestionsResponse {
+  suggestions: EquitySuggestion[];
+  errors: Record<string, string>;
+  days: number;
+  sims: number;
+}
+
 // ---- Commodities ----
 
 export interface CommoditiesListResponse {

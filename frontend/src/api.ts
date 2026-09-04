@@ -4,6 +4,7 @@ import type {
   CommoditiesListResponse, CommoditiesQuotesResponse,
   CompareRequest, CompareResponse,
   CryptoListResponse, CryptoQuotesResponse,
+  EquitiesListResponse, EquitiesQuotesResponse, EquitySuggestionsResponse,
   ForexListResponse, ForexQuotesResponse,
   FundamentalsCompareRequest, FundamentalsCompareResponse,
   FundamentalsRequest, FundamentalsReport,
@@ -62,6 +63,9 @@ export const api = {
   fundamentalsCompare: (req: FundamentalsCompareRequest) =>
     postJSON<FundamentalsCompareResponse>('/api/fundamentals/compare', req),
   sentiment: (req: SentimentRequest) => postJSON<SentimentResponse>('/api/sentiment', req),
+  listEquities: () => getJSON<EquitiesListResponse>('/api/equities'),
+  equityQuotes: () => getJSON<EquitiesQuotesResponse>('/api/equities/quotes'),
+  equitySuggestions: () => getJSON<EquitySuggestionsResponse>('/api/equities/suggestions'),
   listCommodities: () => getJSON<CommoditiesListResponse>('/api/commodities'),
   commodityQuotes: () => getJSON<CommoditiesQuotesResponse>('/api/commodities/quotes'),
   listCrypto: () => getJSON<CryptoListResponse>('/api/crypto'),

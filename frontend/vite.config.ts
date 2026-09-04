@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import vue from '@vitejs/plugin-vue'
 
 // mcstock's FastAPI server mounts /static and serves web/static/index.html at "/",
 // so the production build must emit assets under /static/ and land in that directory.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [vue()],
   base: '/static/',
   build: {
     outDir: '../mcstock/web/static',

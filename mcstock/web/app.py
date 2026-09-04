@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .. import commodities, crypto, data, forex, gbm, plotting, stats
+from .. import commodities, crypto, data, equities, forex, gbm, plotting, stats
 from ..backtest import backtest_strategy, evaluate_strategy_on_paths, resample_paths
 from ..fundamentals import analyst as fundamentals_analyst
 from ..fundamentals import compare as fundamentals_compare
@@ -398,6 +398,61 @@ def api_sentiment(req: SentimentRequest) -> dict:
         "items": scored[:50],
         "daily": [{"date": str(idx.date()), **row} for idx, row in daily.iterrows()],
     }
+
+
+# ---- equities endpoints ----
+
+@app.get("/api/equities")
+def api_equities_list() -> dict:
+    return {"equities": equities.EQUITIES}
+
+
+@app.get("/api/equities/quotes")
+def api_equities_quotes() -> dict:
+    quotes = []
+    errors = {}
+    for entry in equities.EQUITIES:
+        try:
+            quotes.append({**equities.quick_quote(entry["symbol"]), "name": entry["name"]})
+        except Exception as exc:
+            errors[entry["symbol"]] = str(exc)
+    return {"quotes": quotes, "errors": errors}
+
+
+@app.get("/api/equities/suggestions")
+def api_equities_suggestions(sims: int = 3000, days: int = 252) -> dict:
+    """Rank the curated equities list by simulated GBM upside. Not a
+    recommendation -- just orders the same per-symbol simulation used
+    elsewhere by expected return under each symbol's own historical
+    drift/volatility.
+    """
+    suggestions = []
+    errors = {}
+    for entry in equities.EQUITIES:
+        symbol = entry["symbol"]
+        try:
+            prices = data.download_prices(symbol, period="2y")
+            returns = data.log_returns(prices)
+            mu, sigma = data.annualize_drift_vol(returns)
+            s0 = float(prices.iloc[-1])
+            paths = gbm.simulate_gbm_paths(s0, mu, sigma, days, sims)
+            summary = gbm.summarize_final_prices(paths)
+            suggestions.append({
+                "symbol": symbol,
+                "name": entry["name"],
+                "s0": s0,
+                "mu": mu,
+                "sigma": sigma,
+                "expected_return_pct": summary["mean"] / s0 - 1,
+                "prob_above_start": summary["prob_above_start"],
+                "median": summary["median"],
+                "p05": summary["p05"],
+                "p95": summary["p95"],
+            })
+        except Exception as exc:
+            errors[symbol] = str(exc)
+    suggestions.sort(key=lambda s: s["expected_return_pct"], reverse=True)
+    return {"suggestions": suggestions, "errors": errors, "days": days, "sims": sims}
 
 
 # ---- commodities endpoints ----
